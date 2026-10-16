@@ -1,0 +1,9 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+[remote "origin"]
+	url = https://github.com/its-me-Devendra-2015/Ultron--devendra_builds/tree/main
+	fetch = +refs/heads/*:refs/remotes/origin/*

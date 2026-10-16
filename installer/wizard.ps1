@@ -1,0 +1,547 @@
+# ULTRON setup wizard (custom dark UI, Windows PowerShell 5.1 + WPF).
+# Run by the ULTRON-Setup exe. Can also run headless:  -Silent [-InstallDir <path>]
+# Exit codes: 0 installed, 1 failed (already shown to the user), 2 cancelled, 3 UI could not start.
+param(
+  [string]$Payload = '',
+  [switch]$Silent,
+  [string]$InstallDir = '',
+  [string]$Gemini = '',
+  [string]$Fish = '',
+  [string]$Voice = ''
+)
+$ErrorActionPreference = 'Stop'
+$script:Version = '1.3.3'
+$script:IsWin = ($env:OS -eq 'Windows_NT')
+$script:LogFile = Join-Path ([System.IO.Path]::GetTempPath()) 'ultron-setup.log'
+function Write-Log([string]$m) { try { Add-Content -Path $script:LogFile -Value ("{0} {1}" -f (Get-Date -Format s), $m) } catch {} }
+Write-Log "Setup started. Silent=$Silent Payload=$Payload"
+
+# ------------------------------------------------------------------ install logic (no UI)
+function Get-DefaultDir {
+  if ($script:IsWin) {
+    try { $p = (Get-ItemProperty -Path 'HKCU:\Software\ULTRON' -Name InstallDir -ErrorAction Stop).InstallDir; if ($p) { return [string]$p } } catch {}
+    return (Join-Path $env:LOCALAPPDATA 'Programs\ULTRON')
+  }
+  return (Join-Path ([System.IO.Path]::GetTempPath()) 'ultron-test-install')
+}
+
+function Test-Dir([string]$p) {
+  if ([string]::IsNullOrWhiteSpace($p)) { return 'Please choose a folder.' }
+  if (-not [System.IO.Path]::IsPathRooted($p)) { return 'Please enter a full path, for example C:\Users\you\ULTRON.' }
+  try { $full = [System.IO.Path]::GetFullPath($p) } catch { return 'That folder path is not valid.' }
+  $r = [System.IO.Path]::GetPathRoot($full)
+  if ($full.TrimEnd('\', '/') -eq $r.TrimEnd('\', '/')) { return 'Please choose a folder, not a whole drive.' }
+  return $null
+}
+
+function Get-FreeMB([string]$p) {
+  try {
+    $r = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($p))
+    $d = New-Object System.IO.DriveInfo($r)
+    return [int]($d.AvailableFreeSpace / 1MB)
+  } catch { return 99999 }
+}
+
+function Test-KeyText([string]$s) {
+  if ([string]::IsNullOrEmpty($s)) { return $true }
+  return ($s -match '^[A-Za-z0-9_.:\-/@+=]{1,300}$')
+}
+
+function Stop-Ultron([string]$dir) {
+  if (-not $script:IsWin) { return }
+  $root = [System.IO.Path]::GetFullPath($dir)
+  foreach ($p in @(Get-Process -Name 'ULTRON' -ErrorAction SilentlyContinue)) {
+    try {
+      if ($p.Path -and $p.Path.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $p.Kill(); [void]$p.WaitForExit(4000)
+      }
+    } catch {}
+  }
+}
+
+function Install-Files([string]$zip, [string]$dir, [scriptblock]$onProgress) {
+  if (-not (Test-Path -LiteralPath $zip)) { throw "The setup package is missing: $zip" }
+  Add-Type -AssemblyName System.IO.Compression
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $root = [System.IO.Path]::GetFullPath($dir)
+  if (-not $root.EndsWith([string][System.IO.Path]::DirectorySeparatorChar)) { $root += [System.IO.Path]::DirectorySeparatorChar }
+  [void][System.IO.Directory]::CreateDirectory($root)
+  $za = [System.IO.Compression.ZipFile]::OpenRead($zip)
+  try {
+    $total = [long]0
+    foreach ($e in $za.Entries) { $total += $e.Length }
+    if ($total -lt 1) { $total = 1 }
+    $done = [long]0; $i = 0; $written = New-Object System.Collections.Generic.List[string]
+    foreach ($e in $za.Entries) {
+      $i++
+      $dest = [System.IO.Path]::GetFullPath((Join-Path $root $e.FullName))
+      if (-not $dest.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) { continue }   # never write outside the install folder
+      if ($e.FullName.EndsWith('/')) { [void][System.IO.Directory]::CreateDirectory($dest); continue }
+      [void][System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($dest))
+      try { [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true) }
+      catch { Start-Sleep -Milliseconds 700; [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $dest, $true) }
+      $done += $e.Length
+      $written.Add($e.FullName)
+      if ($onProgress -and (($i % 6) -eq 0 -or $e.Length -gt 4MB)) { & $onProgress ([int](100 * $done / $total)) $e.Name }
+    }
+    # the uninstaller removes exactly these files and nothing else
+    $written.Add('install.manifest')
+    [System.IO.File]::WriteAllLines((Join-Path $root 'install.manifest'), $written.ToArray())
+  } finally { $za.Dispose() }
+  if ($onProgress) { & $onProgress 100 '' }
+}
+
+function New-Shortcut([string]$path, [string]$target, [string]$arguments, [string]$icon, [string]$work) {
+  $sh = New-Object -ComObject WScript.Shell
+  $s = $sh.CreateShortcut($path)
+  $s.TargetPath = $target
+  if ($arguments) { $s.Arguments = $arguments }
+  $s.WorkingDirectory = $work
+  if ($icon) { $s.IconLocation = $icon }
+  $s.Description = 'ULTRON desktop AI assistant'
+  $s.Save()
+}
+
+function Save-Keys([string]$gem, [string]$fish, [string]$voice) {
+  $d = if ($script:IsWin) { Join-Path $env:APPDATA 'ULTRON' } else { Join-Path ([System.IO.Path]::GetTempPath()) 'ultron-test-appdata' }
+  $f = Join-Path $d '.env'
+  if (Test-Path -LiteralPath $f) { return 'kept' }
+  if (-not ($gem -or $fish -or $voice)) { return 'none' }
+  [void][System.IO.Directory]::CreateDirectory($d)
+  $lines = @('# Written by the ULTRON installer. You can change these in ULTRON > Settings.')
+  if ($gem) { $lines += "GEMINI_API_KEY=$gem" }
+  if ($fish) { $lines += "FISH_API_KEY=$fish" }
+  if ($voice) { $lines += "FISH_VOICE_ID=$voice" }
+  [System.IO.File]::WriteAllText($f, (($lines -join "`r`n") + "`r`n"), (New-Object System.Text.UTF8Encoding($false)))
+  return 'written'
+}
+
+function Test-ExistingEnv {
+  if (-not $script:IsWin) { return $false }
+  return (Test-Path -LiteralPath (Join-Path $env:APPDATA 'ULTRON\.env'))
+}
+
+function Complete-Install([string]$dir, [bool]$desktop, [string]$gem, [string]$fish, [string]$voice) {
+  $exe = Join-Path $dir 'ULTRON.exe'
+  $ico = Join-Path $dir 'icon.ico'
+  $psArgs = '-NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File "' + (Join-Path $dir 'uninstall.ps1') + '"'
+  if ($script:IsWin) {
+    $sm = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\ULTRON'
+    [void][System.IO.Directory]::CreateDirectory($sm)
+    New-Shortcut (Join-Path $sm 'ULTRON.lnk') $exe '' $ico $dir
+    New-Shortcut (Join-Path $sm 'Uninstall ULTRON.lnk') 'powershell.exe' $psArgs $ico $dir
+    $dk = [Environment]::GetFolderPath('Desktop')
+    if ($desktop -and $dk) { New-Shortcut (Join-Path $dk 'ULTRON.lnk') $exe '' $ico $dir }
+    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ULTRON'
+    [void](New-Item -Path $key -Force)
+    $vals = @{
+      DisplayName = 'ULTRON'; DisplayVersion = $script:Version; Publisher = 'ULTRON'
+      DisplayIcon = $ico; InstallLocation = $dir
+      UninstallString = ('powershell.exe ' + $psArgs)
+    }
+    foreach ($k in $vals.Keys) { [void](New-ItemProperty -Path $key -Name $k -Value $vals[$k] -PropertyType String -Force) }
+    foreach ($k in 'NoModify', 'NoRepair') { [void](New-ItemProperty -Path $key -Name $k -Value 1 -PropertyType DWord -Force) }
+    [void](New-ItemProperty -Path $key -Name 'EstimatedSize' -Value 400000 -PropertyType DWord -Force)
+    [void](New-Item -Path 'HKCU:\Software\ULTRON' -Force)
+    [void](New-ItemProperty -Path 'HKCU:\Software\ULTRON' -Name 'InstallDir' -Value $dir -PropertyType String -Force)
+  }
+  return (Save-Keys $gem $fish $voice)
+}
+
+function Test-Ollama {
+  if (-not $script:IsWin) { return $true }
+  if (Get-Command ollama -ErrorAction SilentlyContinue) { return $true }
+  return (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'))
+}
+
+# ------------------------------------------------------------------ silent mode
+if ($Silent) {
+  try {
+    $dir = if ($InstallDir) { $InstallDir } else { Get-DefaultDir }
+    $err = Test-Dir $dir
+    if ($err) { throw $err }
+    Stop-Ultron $dir
+    Install-Files $Payload $dir $null
+    [void](Complete-Install $dir $true $Gemini $Fish $Voice)
+    Write-Log "Silent install finished: $dir"
+    exit 0
+  } catch {
+    Write-Log "Silent install failed: $($_.Exception.Message)"
+    exit 1
+  }
+}
+
+# ------------------------------------------------------------------ the custom UI
+$IconB64 = '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'
+
+$xaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ULTRON Setup" Width="820" Height="540" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI" TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
+  <Window.Resources>
+    <Style x:Key="Primary" TargetType="Button">
+      <Setter Property="Foreground" Value="#1A0405"/><Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="14"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Height" Value="40"/><Setter Property="MinWidth" Value="120"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="bd" CornerRadius="12" Background="#FF3030" Padding="20,0">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#FF5757"/></Trigger>
+          <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#D82020"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Background" Value="#3A1A1C"/><Setter Property="Foreground" Value="#7A5A5C"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="Ghost" TargetType="Button">
+      <Setter Property="Foreground" Value="#E8D4D4"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/><Setter Property="Height" Value="40"/><Setter Property="MinWidth" Value="96"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="bd" CornerRadius="12" Background="Transparent" BorderBrush="#4A1519" BorderThickness="1.5" Padding="18,0">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#FF3030"/><Setter TargetName="bd" Property="Background" Value="#1C0B0D"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="CloseBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#A58B8D"/><Setter Property="FontSize" Value="15"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Width" Value="36"/><Setter Property="Height" Value="32"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+        <Border x:Name="bd" CornerRadius="8" Background="Transparent">
+          <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#3A1214"/><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Foreground" Value="#F4E1E1"/><Setter Property="CaretBrush" Value="#FF3030"/>
+      <Setter Property="SelectionBrush" Value="#FF3030"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
+        <Border x:Name="bd" Background="#140A0C" BorderBrush="#4A1519" BorderThickness="1.5" CornerRadius="10" Padding="12,0" Height="40">
+          <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#FF3030"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="PasswordBox">
+      <Setter Property="Foreground" Value="#F4E1E1"/><Setter Property="CaretBrush" Value="#FF3030"/>
+      <Setter Property="SelectionBrush" Value="#FF3030"/><Setter Property="FontSize" Value="14"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="PasswordBox">
+        <Border x:Name="bd" Background="#140A0C" BorderBrush="#4A1519" BorderThickness="1.5" CornerRadius="10" Padding="12,0" Height="40">
+          <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#FF3030"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="CheckBox">
+      <Setter Property="Foreground" Value="#E8D4D4"/><Setter Property="FontSize" Value="14"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
+        <StackPanel Orientation="Horizontal" Background="Transparent">
+          <Border x:Name="box" Width="22" Height="22" CornerRadius="6" BorderThickness="1.5" BorderBrush="#5A2226" Background="#140A0C" VerticalAlignment="Center">
+            <Path x:Name="tick" Data="M5,11 L9,15 L17,6" Stroke="#FF3030" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed"/>
+          </Border>
+          <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="tick" Property="Visibility" Value="Visible"/><Setter TargetName="box" Property="BorderBrush" Value="#FF3030"/></Trigger>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="box" Property="BorderBrush" Value="#FF3030"/></Trigger>
+        </ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+    </Style>
+  </Window.Resources>
+
+  <Grid>
+    <Border Margin="14" CornerRadius="18" Background="#0B0607" BorderBrush="#2A1013" BorderThickness="1">
+      <Border.Effect><DropShadowEffect BlurRadius="26" ShadowDepth="0" Opacity="0.75" Color="#000000"/></Border.Effect>
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="232"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+
+        <!-- left rail -->
+        <Border Grid.Column="0" CornerRadius="18,0,0,18">
+          <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#1D080B" Offset="0"/><GradientStop Color="#0D0506" Offset="1"/></LinearGradientBrush>
+          </Border.Background>
+          <Grid Margin="28,36,20,22">
+            <StackPanel>
+              <Image x:Name="Logo" Width="68" Height="68" HorizontalAlignment="Left"/>
+              <TextBlock Text="ULTRON" FontFamily="Bahnschrift, Segoe UI" FontSize="28" FontWeight="Bold" Foreground="#FF3030" Margin="0,16,0,0"/>
+              <TextBlock Text="Desktop AI assistant" FontSize="12" Foreground="#A58B8D" Margin="0,2,0,40"/>
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18"><Ellipse x:Name="Dot1" Width="12" Height="12" Fill="#FF3030"/><TextBlock x:Name="Lbl1" Text="Welcome" FontSize="14" Foreground="#FFFFFF" Margin="14,-2,0,0"/></StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18"><Ellipse x:Name="Dot2" Width="12" Height="12" Fill="#3A1A1C"/><TextBlock x:Name="Lbl2" Text="Location" FontSize="14" Foreground="#7A5A5C" Margin="14,-2,0,0"/></StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18"><Ellipse x:Name="Dot3" Width="12" Height="12" Fill="#3A1A1C"/><TextBlock x:Name="Lbl3" Text="Services" FontSize="14" Foreground="#7A5A5C" Margin="14,-2,0,0"/></StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,18"><Ellipse x:Name="Dot4" Width="12" Height="12" Fill="#3A1A1C"/><TextBlock x:Name="Lbl4" Text="Install" FontSize="14" Foreground="#7A5A5C" Margin="14,-2,0,0"/></StackPanel>
+                <StackPanel Orientation="Horizontal"><Ellipse x:Name="Dot5" Width="12" Height="12" Fill="#3A1A1C"/><TextBlock x:Name="Lbl5" Text="Done" FontSize="14" Foreground="#7A5A5C" Margin="14,-2,0,0"/></StackPanel>
+              </StackPanel>
+            </StackPanel>
+            <TextBlock x:Name="VerText" VerticalAlignment="Bottom" FontSize="11" Foreground="#6E5557"/>
+          </Grid>
+        </Border>
+
+        <!-- right side -->
+        <Grid Grid.Column="1" Margin="36,0,30,26">
+          <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+          <Grid x:Name="TitleBar" Grid.Row="0" Background="Transparent">
+            <TextBlock Text="SETUP" FontSize="11" Foreground="#6E5557" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            <Button x:Name="BtnClose" Style="{StaticResource CloseBtn}" Content="&#x2715;" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-12,0"/>
+          </Grid>
+
+          <Grid Grid.Row="1">
+            <!-- 1 welcome -->
+            <StackPanel x:Name="PageWelcome" VerticalAlignment="Center">
+              <TextBlock Text="Welcome to ULTRON" FontSize="30" FontWeight="Bold" Foreground="#F4E1E1"/>
+              <TextBlock Text="Your voice-first desktop AI assistant. Setup takes about a minute." FontSize="14" Foreground="#A58B8D" Margin="0,8,0,22" TextWrapping="Wrap"/>
+              <Border Background="#120A0C" CornerRadius="10" Padding="0" Margin="0,0,0,10"><Grid><Border Width="4" CornerRadius="10,0,0,10" Background="#FF3030" HorizontalAlignment="Left"/>
+                <StackPanel Margin="20,10,12,10"><TextBlock Text="Online and offline" FontSize="14" FontWeight="SemiBold" Foreground="#F4E1E1"/><TextBlock Text="Gemini when you are connected, a local Gemma model when you are not." FontSize="12" Foreground="#A58B8D" TextWrapping="Wrap"/></StackPanel></Grid></Border>
+              <Border Background="#120A0C" CornerRadius="10" Padding="0" Margin="0,0,0,10"><Grid><Border Width="4" CornerRadius="10,0,0,10" Background="#FF3030" HorizontalAlignment="Left"/>
+                <StackPanel Margin="20,10,12,10"><TextBlock Text="A real voice" FontSize="14" FontWeight="SemiBold" Foreground="#F4E1E1"/><TextBlock Text="Fish Audio voice, with an automatic fallback to the built-in Windows voice." FontSize="12" Foreground="#A58B8D" TextWrapping="Wrap"/></StackPanel></Grid></Border>
+              <Border Background="#120A0C" CornerRadius="10" Padding="0"><Grid><Border Width="4" CornerRadius="10,0,0,10" Background="#FF3030" HorizontalAlignment="Left"/>
+                <StackPanel Margin="20,10,12,10"><TextBlock Text="Briefings and tools" FontSize="14" FontWeight="SemiBold" Foreground="#F4E1E1"/><TextBlock Text="World and market news, app launching, and screen reading." FontSize="12" Foreground="#A58B8D" TextWrapping="Wrap"/></StackPanel></Grid></Border>
+              <CheckBox x:Name="ChkDesktop" Content="Create a desktop shortcut" IsChecked="True" Margin="0,22,0,0"/>
+            </StackPanel>
+
+            <!-- 2 location -->
+            <StackPanel x:Name="PageLocation" VerticalAlignment="Center" Visibility="Collapsed">
+              <TextBlock Text="Where should ULTRON live?" FontSize="28" FontWeight="Bold" Foreground="#F4E1E1"/>
+              <TextBlock Text="Installs for your account only. No administrator rights needed." FontSize="14" Foreground="#A58B8D" Margin="0,8,0,26" TextWrapping="Wrap"/>
+              <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBox x:Name="TxtDir" Grid.Column="0"/>
+                <Button x:Name="BtnBrowse" Grid.Column="1" Style="{StaticResource Ghost}" Content="Browse" Margin="10,0,0,0"/></Grid>
+              <TextBlock x:Name="SpaceNote" Text="Needs about 400 MB of free space." FontSize="12" Foreground="#7A5A5C" Margin="2,10,0,0"/>
+            </StackPanel>
+
+            <!-- 3 services -->
+            <StackPanel x:Name="PageKeys" VerticalAlignment="Center" Visibility="Collapsed">
+              <TextBlock Text="Connect your services" FontSize="28" FontWeight="Bold" Foreground="#F4E1E1"/>
+              <TextBlock Text="All optional. You can add or change these later in ULTRON, under Settings." FontSize="14" Foreground="#A58B8D" Margin="0,8,0,20" TextWrapping="Wrap"/>
+              <TextBlock Text="Gemini API key (online AI)" FontSize="12" Foreground="#C9AEB0" Margin="2,0,0,5"/>
+              <PasswordBox x:Name="PwGem" Margin="0,0,0,12"/>
+              <TextBlock Text="Fish Audio API key (voice)" FontSize="12" Foreground="#C9AEB0" Margin="2,0,0,5"/>
+              <PasswordBox x:Name="PwFish" Margin="0,0,0,12"/>
+              <TextBlock Text="Fish voice ID (optional)" FontSize="12" Foreground="#C9AEB0" Margin="2,0,0,5"/>
+              <TextBox x:Name="TxtVoice"/>
+              <TextBlock x:Name="KeysNote" Text="Keys stay on this PC, in your private ULTRON settings file." FontSize="12" Foreground="#7A5A5C" Margin="2,12,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- 4 install -->
+            <StackPanel x:Name="PageInstall" VerticalAlignment="Center" Visibility="Collapsed">
+              <TextBlock Text="Installing ULTRON" FontSize="28" FontWeight="Bold" Foreground="#F4E1E1"/>
+              <TextBlock x:Name="InstStatus" Text="Preparing..." FontSize="14" Foreground="#A58B8D" Margin="0,8,0,28"/>
+              <ProgressBar x:Name="Prog" Height="12" Minimum="0" Maximum="100" Value="0">
+                <ProgressBar.Template><ControlTemplate TargetType="ProgressBar"><Grid>
+                  <Border x:Name="PART_Track" CornerRadius="6" Background="#1E0F11"/>
+                  <Border x:Name="PART_Indicator" CornerRadius="6" Background="#FF3030" HorizontalAlignment="Left"/>
+                </Grid></ControlTemplate></ProgressBar.Template>
+              </ProgressBar>
+              <Grid Margin="0,10,0,0"><TextBlock x:Name="InstFile" FontSize="11" Foreground="#7A5A5C" TextTrimming="CharacterEllipsis" Margin="0,0,60,0"/>
+                <TextBlock x:Name="InstPct" Text="0%" FontSize="12" Foreground="#C9AEB0" HorizontalAlignment="Right"/></Grid>
+              <TextBlock x:Name="InstError" Visibility="Collapsed" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,20,0,0"/>
+            </StackPanel>
+
+            <!-- 5 done -->
+            <StackPanel x:Name="PageDone" VerticalAlignment="Center" Visibility="Collapsed">
+              <Grid Width="54" Height="54" HorizontalAlignment="Left" Margin="0,0,0,16">
+                <Ellipse Fill="#FF3030"/>
+                <Path Data="M15,28 L24,37 L40,18" Stroke="#1A0405" StrokeThickness="4.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+              </Grid>
+              <TextBlock Text="You're all set" FontSize="30" FontWeight="Bold" Foreground="#F4E1E1"/>
+              <TextBlock x:Name="DoneInfo" FontSize="14" Foreground="#A58B8D" Margin="0,8,0,18" TextWrapping="Wrap"/>
+              <Border x:Name="OllamaCard" Background="#120A0C" CornerRadius="10" Padding="16,12" Margin="0,0,0,18">
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                  <StackPanel><TextBlock Text="Want offline mode?" FontSize="14" FontWeight="SemiBold" Foreground="#F4E1E1"/>
+                    <TextBlock Text="Install Ollama, then run:  ollama pull gemma4:e2b" FontSize="12" Foreground="#A58B8D" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel>
+                  <Button x:Name="BtnOllama" Grid.Column="1" Style="{StaticResource Ghost}" Content="Get Ollama" Height="34" Margin="12,0,0,0"/></Grid>
+              </Border>
+              <CheckBox x:Name="ChkLaunch" Content="Launch ULTRON now" IsChecked="True"/>
+            </StackPanel>
+          </Grid>
+
+          <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBlock x:Name="Hint" Grid.Column="0" FontSize="12" Foreground="#FF6B6B" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+              <Button x:Name="BtnBack" Style="{StaticResource Ghost}" Content="Back" Margin="0,0,10,0"/>
+              <Button x:Name="BtnNext" Style="{StaticResource Primary}" Content="Get started"/>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- confirm overlay -->
+    <Border x:Name="Overlay" Margin="14" CornerRadius="18" Background="#CC000000" Visibility="Collapsed">
+      <Border Width="360" Padding="26" CornerRadius="16" Background="#140A0C" BorderBrush="#4A1519" BorderThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel>
+          <TextBlock Text="Cancel setup?" FontSize="20" FontWeight="Bold" Foreground="#F4E1E1"/>
+          <TextBlock Text="ULTRON has not been installed yet." FontSize="13" Foreground="#A58B8D" Margin="0,6,0,22"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnStay" Style="{StaticResource Ghost}" Content="Keep going" Margin="0,0,10,0"/>
+            <Button x:Name="BtnQuit" Style="{StaticResource Primary}" Content="Quit setup" MinWidth="100"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</Window>
+'@
+
+try {
+  Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Xaml
+  Add-Type -AssemblyName System.Windows.Forms
+  $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$xaml)))
+} catch {
+  Write-Log "UI could not start: $($_.Exception.Message)"
+  exit 3
+}
+
+function El([string]$n) { return $win.FindName($n) }
+function Brush([string]$hex) { return (New-Object System.Windows.Media.BrushConverter).ConvertFromString($hex) }
+function DoEvents {
+  $script:frame = New-Object System.Windows.Threading.DispatcherFrame
+  [void][System.Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke(
+    [System.Windows.Threading.DispatcherPriority]::Background, [Action]{ $script:frame.Continue = $false })
+  [System.Windows.Threading.Dispatcher]::PushFrame($script:frame)
+}
+
+try {
+  $bytes = [Convert]::FromBase64String($IconB64)
+  $ms = New-Object System.IO.MemoryStream(, $bytes)
+  $bmp = New-Object System.Windows.Media.Imaging.BitmapImage
+  $bmp.BeginInit(); $bmp.StreamSource = $ms; $bmp.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad; $bmp.EndInit(); $bmp.Freeze()
+  (El 'Logo').Source = $bmp
+  $win.Icon = $bmp
+} catch { Write-Log "Logo failed: $($_.Exception.Message)" }
+
+(El 'VerText').Text = "v$script:Version"
+(El 'TxtDir').Text = Get-DefaultDir
+$script:page = 1; $script:busy = $false; $script:failed = $false; $script:exitCode = 2
+$script:installDir = ''
+$pages = 'PageWelcome', 'PageLocation', 'PageKeys', 'PageInstall', 'PageDone'
+
+function Show-Hint([string]$t) { (El 'Hint').Text = $t }
+
+function Show-Page([int]$n) {
+  $script:page = $n
+  Show-Hint ''
+  for ($i = 1; $i -le 5; $i++) {
+    (El $pages[$i - 1]).Visibility = $(if ($i -eq $n) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed })
+    $dot = El "Dot$i"; $lbl = El "Lbl$i"
+    if ($i -lt $n) { $dot.Fill = Brush '#FF3030'; $lbl.Foreground = Brush '#C9AEB0'; $lbl.FontWeight = [System.Windows.FontWeights]::Normal }
+    elseif ($i -eq $n) { $dot.Fill = Brush '#FF3030'; $lbl.Foreground = Brush '#FFFFFF'; $lbl.FontWeight = [System.Windows.FontWeights]::SemiBold }
+    else { $dot.Fill = Brush '#3A1A1C'; $lbl.Foreground = Brush '#7A5A5C'; $lbl.FontWeight = [System.Windows.FontWeights]::Normal }
+  }
+  $back = El 'BtnBack'; $next = El 'BtnNext'
+  $vis = [System.Windows.Visibility]::Visible; $col = [System.Windows.Visibility]::Collapsed
+  switch ($n) {
+    1 { $back.Visibility = $col; $next.Visibility = $vis; $next.Content = 'Get started' }
+    2 { $back.Visibility = $vis; $next.Visibility = $vis; $next.Content = 'Continue' }
+    3 { $back.Visibility = $vis; $next.Visibility = $vis; $next.Content = 'Install' }
+    4 { $back.Visibility = $col; $next.Visibility = $col }
+    5 { $back.Visibility = $col; $next.Visibility = $vis; $next.Content = 'Finish' }
+  }
+}
+
+function Set-Status([string]$text, [int]$pct, [string]$file) {
+  (El 'InstStatus').Text = $text
+  (El 'Prog').Value = $pct
+  (El 'InstPct').Text = "$pct%"
+  (El 'InstFile').Text = $file
+  DoEvents
+}
+
+function Start-Install {
+  $script:busy = $true
+  $dir = (El 'TxtDir').Text.Trim()
+  $gem = (El 'PwGem').Password.Trim(); $fish = (El 'PwFish').Password.Trim(); $voice = (El 'TxtVoice').Text.Trim()
+  $desk = [bool](El 'ChkDesktop').IsChecked
+  DoEvents
+  try {
+    Set-Status 'Closing any running copy of ULTRON...' 0 ''
+    Stop-Ultron $dir
+    Set-Status 'Copying files...' 0 ''
+    Install-Files $Payload $dir { param($pct, $name) Set-Status 'Copying files...' $pct $name }
+    Set-Status 'Creating shortcuts...' 100 ''
+    $state = Complete-Install $dir $desk $gem $fish $voice
+    $script:installDir = $dir
+    $info = "ULTRON is installed in $dir. "
+    if ($state -eq 'written') { $info += 'Your keys were saved.' }
+    elseif ($state -eq 'kept') { $info += 'Your existing settings were kept.' }
+    else { $info += 'Add your API keys any time in ULTRON, under Settings.' }
+    (El 'DoneInfo').Text = $info
+    (El 'OllamaCard').Visibility = $(if (Test-Ollama) { [System.Windows.Visibility]::Collapsed } else { [System.Windows.Visibility]::Visible })
+    $script:exitCode = 0
+    Write-Log "Install finished: $dir"
+    Show-Page 5
+  } catch {
+    $script:failed = $true; $script:exitCode = 1
+    Write-Log "ERROR: $($_.Exception.Message)"
+    (El 'InstStatus').Text = 'Setup could not finish.'
+    (El 'InstError').Text = "$($_.Exception.Message)`nDetails: $script:LogFile"
+    (El 'InstError').Visibility = [System.Windows.Visibility]::Visible
+    $n = El 'BtnNext'; $n.Visibility = [System.Windows.Visibility]::Visible; $n.Content = 'Close'
+  } finally { $script:busy = $false }
+}
+
+function Invoke-Next {
+  if ($script:busy) { return }
+  Show-Hint ''
+  switch ($script:page) {
+    1 { Show-Page 2 }
+    2 {
+      $dir = (El 'TxtDir').Text.Trim()
+      $e = Test-Dir $dir
+      if ($e) { Show-Hint $e; return }
+      $mb = Get-FreeMB $dir
+      if ($mb -lt 600) { Show-Hint "Only $mb MB free on that drive. ULTRON needs about 600 MB."; return }
+      $has = Test-ExistingEnv
+      foreach ($n in 'PwGem', 'PwFish', 'TxtVoice') { (El $n).IsEnabled = (-not $has) }
+      (El 'KeysNote').Text = $(if ($has) { 'Existing ULTRON settings were found and will be kept. Change them later in ULTRON, under Settings.' } else { 'Keys stay on this PC, in your private ULTRON settings file.' })
+      Show-Page 3
+    }
+    3 {
+      $g = (El 'PwGem').Password.Trim(); $f = (El 'PwFish').Password.Trim(); $v = (El 'TxtVoice').Text.Trim()
+      if (-not (Test-KeyText $g)) { Show-Hint 'The Gemini key has characters that keys never contain. Check for stray spaces or quotes.'; return }
+      if (-not (Test-KeyText $f)) { Show-Hint 'The Fish key has characters that keys never contain. Check for stray spaces or quotes.'; return }
+      if (-not (Test-KeyText $v)) { Show-Hint 'The voice ID has characters that are not allowed.'; return }
+      Show-Page 4
+      DoEvents
+      Start-Install
+    }
+    4 { if ($script:failed) { $win.Close() } }
+    5 {
+      if ((El 'ChkLaunch').IsChecked -and $script:installDir) {
+        try { Start-Process -FilePath (Join-Path $script:installDir 'ULTRON.exe') -WorkingDirectory $script:installDir } catch { Write-Log "Launch failed: $($_.Exception.Message)" }
+      }
+      $win.Close()
+    }
+  }
+}
+
+(El 'BtnNext').Add_Click({ Invoke-Next })
+(El 'BtnBack').Add_Click({ if (-not $script:busy -and $script:page -gt 1 -and $script:page -lt 4) { Show-Page ($script:page - 1) } })
+(El 'BtnBrowse').Add_Click({
+  $d = New-Object System.Windows.Forms.FolderBrowserDialog
+  $d.Description = 'Choose where to install ULTRON'
+  if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    $p = $d.SelectedPath
+    if ((Split-Path -Leaf $p) -ne 'ULTRON') { $p = Join-Path $p 'ULTRON' }
+    (El 'TxtDir').Text = $p
+  }
+})
+(El 'BtnOllama').Add_Click({ try { Start-Process 'https://ollama.com/download' } catch {} })
+(El 'TitleBar').Add_MouseLeftButtonDown({ try { $win.DragMove() } catch {} })
+(El 'BtnClose').Add_Click({
+  if ($script:busy) { return }
+  if ($script:page -ge 5 -or $script:failed) { $win.Close() } else { (El 'Overlay').Visibility = [System.Windows.Visibility]::Visible }
+})
+(El 'BtnStay').Add_Click({ (El 'Overlay').Visibility = [System.Windows.Visibility]::Collapsed })
+(El 'BtnQuit').Add_Click({ $script:exitCode = 2; $win.Close() })
+$win.Add_Closing({ param($s, $e) if ($script:busy) { $e.Cancel = $true } })
+
+Show-Page 1
+try { [void]$win.ShowDialog() } catch { Write-Log "UI error: $($_.Exception.Message)"; exit 1 }
+Write-Log "Setup closed with code $script:exitCode"
+exit $script:exitCode
