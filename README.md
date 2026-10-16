@@ -1,155 +1,295 @@
 # 🔴 ULTRON — Personal AI Assistant
 
-**One Assistant. One Interface. Infinite Possibilities.**
+**Your Personal AI Command Center.**
 
-ULTRON is a futuristic personal AI assistant project designed to bring AI-powered assistance, system interaction, file management, and productivity tools into one unified experience.
+ULTRON is a futuristic personal AI assistant designed to bring intelligent conversations, desktop interaction, file management, and productivity tools into one unified application.
 
-Featuring a cinematic, dark interface with crimson-red accents and futuristic HUD elements, ULTRON aims to make interacting with your computer feel like using an advanced AI command center.
+Inspired by the cinematic interfaces of Iron Man, ULTRON combines a sleek dark dashboard, crimson-red holographic visuals, and a **hybrid AI architecture** that can use cloud-based AI providers or local AI models powered by Ollama.
+
+**Online AI when you need it. Local AI when you want privacy and offline access.**
+
+![ULTRON](https://img.shields.io/badge/ULTRON-Personal%20AI%20Assistant-crimson?style=for-the-badge)
+![AI](https://img.shields.io/badge/AI-Hybrid%20%7C%20Cloud%20%7C%20Local-red?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-In%20Development-orange?style=for-the-badge)
 
 ---
 
 ## ✨ Features
 
-- 🤖 **AI Assistant** — Access AI-powered assistance using your configured API provider.
-- 🔴 **Futuristic UI** — A dark interface with crimson-red accents and sci-fi-inspired visuals.
-- 🖥️ **Desktop Application** — Build and run ULTRON as a Windows executable.
-- ⚙️ **Settings** — Configure supported options and API keys within the application.
-- 📁 **File Management** — Access supported file-related features.
-- 🧰 **Productivity Tools** — Keep useful tools and assistant features in one interface.
-- 🎨 **Custom Dashboard** — A JARVIS-inspired layout with holographic elements and status indicators.
+- 🤖 **AI Assistant** — Interact with supported AI models through a unified interface.
+- 🔀 **Hybrid AI Architecture** — Choose between cloud-based AI and locally hosted models.
+- ☁️ **Online AI Mode** — Connect supported cloud providers using your API keys.
+- 📴 **Offline AI Mode** — Run downloaded local models using Ollama without an internet connection.
+- 🔴 **Futuristic Dashboard** — Dark backgrounds, crimson-red accents, neon borders, and sci-fi-inspired HUD elements.
+- ⚙️ **Settings** — Configure supported AI providers, model names, and application preferences.
+- 📁 **File Management** — Access supported file-related tools.
+- 🧰 **Productivity Tools** — Bring supported utilities and assistant features together.
+- 🖥️ **Windows Executable** — Build the desktop application using `build-exe.bat`.
+- 🔐 **Local AI Privacy** — Process prompts locally when using Ollama, subject to the application's implementation.
 
-*Available features depend on the implementation and configuration of your version of ULTRON.*
+*Feature availability depends on the current source code, configured providers, and installed integrations.*
 
 ---
 
-## 💻 System Requirements
+## 🧠 Hybrid AI System
 
-- **Operating system:** Windows 10 or Windows 11
-- **Build process:** Windows Command Prompt or PowerShell
-- **Build script:** `build-exe.bat`
-- **Internet connection:** Required for downloading dependencies during the build, if applicable, and for online AI services
-- **API keys:** Required for AI providers that use API authentication
-- **Storage:** Sufficient free space for project dependencies and build output
+ULTRON is designed to support two complementary AI modes.
 
-Additional dependencies may be required by the build script.
+<details>
+<summary><strong>☁️ Online AI Mode — Cloud Providers</strong></summary>
+
+Use compatible cloud AI services for models hosted by external providers.
+
+**Setup:**
+
+1. Open ULTRON.
+2. Navigate to **Settings**.
+3. Scroll down to the API configuration section.
+4. Select your supported AI provider.
+5. Enter the corresponding API key.
+6. Select a supported model, if required.
+7. Save your settings and test a conversation.
+
+**Requirements:**
+
+- Internet connection.
+- A valid API key for providers that require authentication.
+- Provider access and any required billing or usage allowance.
+
+**Advantages:**
+
+- Access to supported cloud-hosted models.
+- No need to download large model files locally.
+- Model capabilities depend on the selected provider and service.
+
+</details>
+
+<details>
+<summary><strong>📴 Offline AI Mode — Ollama</strong></summary>
+
+Ollama allows compatible AI models to run locally on your computer. Once Ollama and a model are installed, inference can work without an internet connection.
+
+**Advantages:**
+
+- No cloud API key required for local inference.
+- Local processing of prompts.
+- No cloud inference charges for local model usage.
+- Works without internet after the required downloads are complete.
+- More control over where your conversation data is processed.
+
+**Requirements:**
+
+- Ollama installed and running.
+- A compatible model downloaded locally.
+- Enough disk space and memory for the selected model.
+- ULTRON configured to communicate with Ollama.
+
+</details>
+
+### 🔀 Switching Between AI Modes
+
+When both integrations are implemented, users should be able to switch between cloud and local AI through ULTRON's Settings.
+
+| Capability | Online AI | Ollama Offline |
+|---|---|---|
+| Internet required for inference | Yes | No, after setup |
+| Cloud API key | Usually required | Not required |
+| Model runs locally | No | Yes |
+| Cloud inference charges | May apply | No |
+| Local hardware required for inference | Minimal beyond the app | Depends on the model |
+| Online-only tools | Available when configured | Require internet independently |
+
+**Important:** A hybrid design does not automatically provide offline support. The application must implement Ollama integration, provider selection, and local request handling.
+
+---
+
+## 📴 Setting Up Ollama Offline Mode
+
+### Step 1 — Install Ollama
+
+Download Ollama for Windows from the official website:
+
+https://ollama.com/download
+
+Install the application and start the Ollama service.
+
+### Step 2 — Download a Model
+
+Open PowerShell or Command Prompt and run:
+
+```powershell
+ollama pull llama3.2:3b
+```
+
+Wait until the model download completes. This step requires an internet connection.
+
+The `llama3.2:3b` model is an example of a relatively small local model. Actual performance depends on your computer's available memory, CPU, and supported acceleration.
+
+### Step 3 — Test the Model
+
+Run:
+
+```powershell
+ollama run llama3.2:3b
+```
+
+Enter a prompt and verify that the model responds.
+
+To exit the conversation, enter:
+
+```text
+/bye
+```
+
+### Step 4 — Configure ULTRON
+
+1. Launch ULTRON.
+2. Open **Settings**.
+3. Scroll to the AI provider configuration section.
+4. Select **Ollama** or **Local AI**, if available.
+5. Set the Ollama endpoint to:
+
+   `http://localhost:11434`
+
+6. Set the model name to:
+
+   `llama3.2:3b`
+
+7. Save your configuration, if required.
+8. Test a conversation.
+
+These settings require actual Ollama support in the application. If Ollama is not available in Settings, the source code must be updated before this workflow will work.
+
+### Step 5 — Use ULTRON Without Internet
+
+1. Download your desired model in advance.
+2. Confirm that it responds successfully.
+3. Keep the Ollama service running.
+4. Disconnect from the internet.
+5. Open ULTRON and select the local AI provider.
+6. Send a test prompt.
+
+Local AI inference should continue to work, provided that ULTRON and Ollama are configured correctly and neither depends on a cloud service for that operation.
+
+**Offline limitations:** Web search, cloud AI, online APIs, remote content, and other internet-dependent features will not work without connectivity.
 
 ---
 
 ## 📥 Installation Guide
 
-Follow these steps to build, install, and configure ULTRON.
+### Step 1 — Download the Source Code
 
-### Step 1 — Download ULTRON
-
-Clone the repository using Git:
+Clone the repository:
 
 ```powershell
 git clone https://github.com/its-me-Devendra-2015/Ultron--devendra_builds.git
 ```
 
-Open the downloaded project folder:
+Navigate into the project folder:
 
 ```powershell
 cd Ultron--devendra_builds
 ```
 
-Alternatively, download the repository as a ZIP file from GitHub and extract it to a folder on your computer.
+Alternatively, download the repository as a ZIP file from GitHub and extract it.
 
 ### Step 2 — Build the Executable
 
-1. Open the ULTRON project folder.
-2. Locate `build-exe.bat`.
-3. Double-click `build-exe.bat`.
-4. Allow the build process to run.
-5. Wait until the script finishes and check the output for errors.
+Locate `build-exe.bat` in the project folder.
 
-You can also launch the script from PowerShell:
+**Option A — Double-click**
+
+1. Open the ULTRON project folder.
+2. Find `build-exe.bat`.
+3. Double-click it.
+4. Wait for the build process to complete.
+5. Read the terminal output for the result and any errors.
+
+**Option B — PowerShell**
+
+Open PowerShell in the project directory and execute:
 
 ```powershell
 .\build-exe.bat
 ```
 
-The script builds the executable according to the project's build configuration. If it reports missing dependencies, install the required tools and try again.
+Keep the terminal open until the build finishes. Install any required dependencies if the script reports that they are missing.
 
-**Important:** Do not close the build window while the build is running.
+### Step 3 — Locate the Generated Executable
 
-### Step 3 — Install ULTRON
+When the build completes, check the output path shown by the script.
 
-After the build completes:
+Locate the generated `.exe` file. Depending on the packaging configuration, it may be an installer or the application executable itself.
 
-1. Locate the generated `.exe` file in the output directory indicated by the build script.
-2. Double-click the executable.
-3. If it is an installer, follow the on-screen installation instructions.
-4. Wait for installation to finish.
-5. Launch ULTRON.
+### Step 4 — Install or Launch ULTRON
 
-If the executable is the application itself rather than an installer, run it directly.
+1. Double-click the generated executable.
+2. If it is an installer, follow the on-screen instructions.
+3. Complete the installation.
+4. Launch ULTRON from the installed location or the shortcut created by the installer.
 
-### Step 4 — Handle the Windows Security Warning
+The exact output directory and installation procedure depend on the current build script.
 
-Windows may display a **“Windows protected your PC”** message when running an executable that SmartScreen does not recognize.
+### Step 5 — Windows SmartScreen Warning
 
-If you have verified that the executable is from a trusted source and want to proceed:
+Windows may show a **“Windows protected your PC”** warning when an executable is not recognized.
+
+If you have verified that the executable comes from a trusted source:
 
 1. Click **More info**.
-2. Review the application information.
-3. Click **Run anyway**, if you trust the executable and Windows offers that option.
-4. Continue with the installation or launch procedure.
+2. Review the displayed application information.
+3. Click **Run anyway** if you trust the executable and that option is available.
+4. Follow the remaining installation or launch instructions.
 
-**Security warning:** Do not bypass this warning automatically for an unknown or unverified executable. Verify the source and scan the file if you are unsure.
+**Security notice:** Do not bypass a warning for an unknown or unverified executable. Verify the source and scan the file if you are uncertain.
 
-### Step 5 — Configure Your API Keys
+### Step 6 — Configure Your API Keys
 
-After installation, configure the API keys required by your selected AI provider.
+After installation:
 
 1. Open ULTRON.
 2. Navigate to **Settings**.
 3. Scroll down to the API key configuration section.
-4. Find the field for your chosen AI provider.
-5. Enter your API key.
-6. Save your settings, if a Save button is provided.
-7. Return to the assistant and test your connection.
+4. Choose your cloud AI provider.
+5. Enter the corresponding API key.
+6. Select the appropriate model if necessary.
+7. Save the configuration and test the assistant.
 
-Use a valid API key from the corresponding provider. API access may require an account, billing setup, or available credits, depending on the provider.
-
-**Keep your API keys private.** Never post them in screenshots, public repositories, issue reports, or shared configuration files. If a key is exposed, revoke it and create a replacement.
-
-### Step 6 — Start Using ULTRON
-
-Once installation and configuration are complete:
-
-- Open ULTRON.
-- Navigate through the available dashboard sections.
-- Open the assistant.
-- Test an AI request using your configured provider.
-- Explore the tools and settings available in your version.
-
-You're ready to start using ULTRON!
+For Ollama offline mode, select the local provider and configure the local endpoint and downloaded model instead. Local inference does not ordinarily require a cloud API key.
 
 ---
 
-## 🛠️ Building from Source
+## ⚙️ Configuration Reference
 
-To build ULTRON again or troubleshoot a previous build:
+| Setting | Example |
+|---|---|
+| AI mode | Online or Local |
+| Local provider | Ollama |
+| Local endpoint | `http://localhost:11434` |
+| Example local model | `llama3.2:3b` |
+| Cloud API key | Obtained from the chosen provider |
+| Offline model download | Complete before disconnecting |
 
-1. Open the source repository folder.
-2. Confirm that `build-exe.bat` is present.
-3. Make sure the required build tools and dependencies are installed.
-4. Run `build-exe.bat`.
-5. Read the terminal output for errors.
-6. Locate the generated executable using the output path shown by the script.
+The exact settings names may differ depending on the current application version.
 
-Run the script from a terminal if you want to keep the build output visible.
+---
 
-```powershell
-.\build-exe.bat
-```
+## 🖥️ System Requirements
+
+- Windows 10 or Windows 11.
+- Sufficient disk space for the application and its dependencies.
+- Required build tools and runtimes for building from source.
+- Internet access for downloading the source, dependencies, cloud AI access, and Ollama models.
+- For offline AI, sufficient memory and processing capability for the chosen model.
+
+Local models can require substantial disk space and memory. Select a model appropriate for your hardware.
 
 ---
 
 ## 📂 Project Structure
 
-The exact structure depends on the current repository version. An example of the main project components is shown below.
+The repository may contain components similar to these:
 
 ```text
 ULTRON/
@@ -158,85 +298,105 @@ ULTRON/
 ├── index.html
 ├── apps.json
 ├── .env.example
-└── Other application files and resources
+└── Other source files, assets, and installer resources
 ```
 
-This is an illustrative overview, not a guaranteed complete file listing. The actual repository may contain additional source files, assets, dependencies, and installer resources.
+This is an illustrative overview. Refer to the actual repository for the complete and current project structure.
+
+---
+
+## 🔐 Security, Privacy & API Keys
+
+- Never publish private API keys in your source code or GitHub repository.
+- Keep real credentials out of `.env.example`.
+- Use local environment configuration or the application's supported secure settings mechanism.
+- Revoke and replace any API key that becomes exposed.
+- Review permissions before enabling file access or system-control functionality.
+- Download software and models only from trusted sources.
+
+### Privacy in Ollama Mode
+
+When ULTRON sends prompts to a local Ollama model, those prompts can be processed on your computer rather than sent to a cloud AI provider.
+
+However, local inference does not guarantee that the entire application is offline. Other integrations may still make network requests. A fully offline setup must avoid cloud-dependent features and any services that require internet access.
 
 ---
 
 ## 🧰 Troubleshooting
 
-### `build-exe.bat` does not run
+### `build-exe.bat` fails
 
-- Confirm that the file exists in the project folder.
-- Open PowerShell in that folder.
-- Run `.\build-exe.bat`.
-- Review any errors displayed in the terminal.
+- Verify that the script exists in the project folder.
+- Run it from PowerShell to inspect the output.
+- Check the error message for missing dependencies or build tools.
+- Confirm that the project has been extracted completely.
 
-### The build fails
+### ULTRON does not start
 
-- Check whether the required build tools are installed.
-- Ensure your internet connection is working if dependencies need to be downloaded.
-- Read the error output to identify missing packages or configuration files.
-- Verify that the project files have been downloaded or extracted correctly.
+- Verify that the executable was built successfully.
+- Check the output directory for required resources.
+- Review any error messages.
+- Confirm that required runtimes and dependencies are installed.
 
-### Windows blocks the executable
+### Cloud AI does not respond
 
-- Verify that the executable came from the intended repository or build process.
-- Check the file with your security software.
-- Proceed only if you trust the source and understand the warning.
+- Verify the API key in Settings.
+- Check internet connectivity.
+- Confirm the selected provider and model.
+- Review provider access, usage limits, and billing requirements.
 
-### ULTRON does not respond to AI requests
+### Ollama is not responding
 
-- Open **Settings**.
-- Scroll to the API key section.
-- Verify that the key is entered correctly.
-- Check your internet connection.
-- Confirm that the selected provider supports the configured model.
-- Check the provider's account status, usage limits, and billing requirements.
+Check the installed models:
 
-### API keys are not being saved
+```powershell
+ollama list
+```
 
-- Check whether the application provides a Save or Apply option.
-- Restart ULTRON and verify the settings.
-- Ensure the application has the permissions it needs to save its configuration.
-- Never place a real API key in a public source file to work around a settings issue.
+If the expected model is missing, download it while online:
 
-### The executable cannot find required files
+```powershell
+ollama pull llama3.2:3b
+```
 
-- Check whether the build produced all required application resources.
-- Follow the output and packaging instructions defined by the project's build script.
-- If the problem persists, review the build log.
+Make sure Ollama is running and the configured endpoint is correct:
+
+`http://localhost:11434`
+
+### Offline mode does not work
+
+- Confirm the model was downloaded before disconnecting from the internet.
+- Verify that ULTRON supports Ollama.
+- Check that the selected model name matches an installed model.
+- Confirm that Ollama is running locally.
+- Disable or avoid features that require cloud services.
+
+### Settings are not saved
+
+- Use the application's Save or Apply option if available.
+- Restart ULTRON and verify the configuration.
+- Check that the application can write to its configuration location.
+- Never solve configuration issues by publishing real credentials.
 
 ---
 
-## 🔐 Security and Privacy
+## 🗺️ Roadmap
 
-- Keep your API keys and passwords confidential.
-- Do not commit `.env` files containing real credentials.
-- Review permissions before enabling system-control or file-access features.
-- Download executables only from sources you trust.
-- Avoid running unknown executables with administrator privileges.
-- Keep Windows and your security software up to date.
+Potential future improvements include:
 
----
+- [ ] Complete cloud AI provider integration.
+- [ ] Ollama integration for local AI inference.
+- [ ] Easy switching between online and local modes.
+- [ ] Clear online/offline connection status.
+- [ ] Improved API key and provider settings.
+- [ ] Enhanced AI conversations.
+- [ ] Expanded desktop and file-management tools.
+- [ ] More productivity integrations.
+- [ ] Refined holographic HUD animations.
+- [ ] Improved executable packaging and installation.
+- [ ] Better diagnostics and error messages.
 
-## 🗺️ Future Development
-
-Potential improvements for ULTRON include:
-
-- [ ] Enhanced AI conversations
-- [ ] Additional AI provider integrations
-- [ ] Expanded desktop controls
-- [ ] Improved file-management tools
-- [ ] More productivity features
-- [ ] Enhanced HUD animations and visual effects
-- [ ] Improved installation and update workflows
-- [ ] Expanded configuration and diagnostics
-- [ ] Better error handling and setup guidance
-
-These are potential development goals, not a guarantee that each feature is already implemented.
+These items represent potential development goals and are not a claim that every feature is already implemented.
 
 ---
 
@@ -246,18 +406,18 @@ These are potential development goals, not a guarantee that each feature is alre
 
 GitHub: [@its-me-Devendra-2015](https://github.com/its-me-Devendra-2015)
 
-Project repository: [ULTRON — Source](https://github.com/its-me-Devendra-2015/Ultron--devendra_builds)
+**Repository:** [ULTRON — Source Code](https://github.com/its-me-Devendra-2015/Ultron--devendra_builds)
 
 ---
 
 ## 📜 License
 
-Check the repository for a `LICENSE` file to determine the project's applicable license and redistribution permissions. If no license is present, do not assume that unrestricted redistribution or commercial use is permitted.
+Check the repository for a `LICENSE` file before redistributing or using this project commercially. If no license is included, do not assume that unrestricted reuse or redistribution is permitted.
 
 ---
 
 <p align="center">
   <strong>🔴 ULTRON</strong><br>
   <em>Your Personal AI Command Center</em><br><br>
-  Built to explore the future of personal AI assistance.
+  Cloud Intelligence. Local AI. One Unified Experience.
 </p>
