@@ -1,0 +1,5 @@
+.env.local
+*.jks
+*.keystore
+android/key.properties
+ios/Runner/GoogleService-Info.plist
