@@ -51,8 +51,10 @@ async def create_mobile_session(
     if not all((livekit_url, api_key, api_secret)):
         raise HTTPException(503, "LiveKit server configuration is incomplete.")
 
-    if request.mode == "companion" and not os.getenv("ULTRON_COMPANION_ENABLED", "0") == "1":
-        raise HTTPException(503, "Companion mode is not enabled until the authenticated desktop bridge is online.")
+    if request.mode == "companion":
+        # Never claim companion mode is ready until a real authenticated desktop
+        # bridge health check and per-device pairing verification are implemented.
+        raise HTTPException(503, "Companion mode is not wired yet: the secure desktop bridge must be implemented and verified first.")
 
     room_name = f"ultron-{request.mode}-{secrets.token_urlsafe(12)}"
     identity = f"mobile-{secrets.token_hex(6)}"
