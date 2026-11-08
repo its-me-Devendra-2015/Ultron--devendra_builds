@@ -19,5 +19,7 @@ jobs:
           node --check preload.js
           node --check automation.js
           node --check credentials.js
+      - name: Renderer syntax check
+        run: node scripts/check-inline.js
       - name: Security regression tests
         run: npm test
