@@ -441,6 +441,60 @@ const _v2=run;run=async function(text,mode){const t=String(text||'').trim(),q=t.
  if(/^(?:hi|hello|hey|yo|good (?:morning|afternoon|evening))[.!]*$/.test(q))return say(greet(),t);
  if(/^(?:who are you|what are you|what can you do)\??$/.test(q))return say(ABOUT,t);
  const r=await _v2(text,mode);chip();return r};
+
+ // Advanced desktop controls, capture and credential vault.
+ const safeText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ async function refreshWindows(){
+  try{const r=await J('/api/automation/windows');$('#autoStatus').textContent=r.stopped?'Emergency stop is active.':'Windows detected: '+r.windows.length;
+   $('#windowList').innerHTML=r.windows.map(w=>'<div class="box" style="padding:10px"><b>'+safeText(w.title||w.process)+'</b><div class="mut">'+safeText(w.process)+' · PID '+w.pid+'</div><button class="btn" data-close="'+w.pid+'" style="margin-top:6px">Close window…</button></div>').join('')||'<span class="mut">No visible windows found.</span>';
+  }catch(e){$('#autoStatus').textContent=e.message}
+ }
+ $('#winRefresh').onclick=refreshWindows;
+ $('#windowList').onclick=e=>{const b=e.target.closest('[data-close]');if(!b)return;const pid=Number(b.dataset.close);confirmBox('Ask Windows to close this application gracefully? PID '+pid,async()=>{try{await J('/api/automation/action',{action:{type:'close',pid}});toast('Window closed');refreshWindows()}catch(x){toast(x.message)}})};
+ $('#autoStop').onclick=async()=>{try{await J('/api/automation/stop',{});window.ultronDesktop?.emergencyStop();$('#autoStatus').textContent='EMERGENCY STOP ACTIVE';toast('Automation stopped')}catch(e){toast(e.message)}};
+ $('#autoResume').onclick=()=>confirmBox('Resume desktop automation? New actions will still require approval.',async()=>{try{await J('/api/automation/resume',{});$('#autoStatus').textContent='Automation resumed';toast('Automation resumed')}catch(e){toast(e.message)}});
+ refreshWindows();
+ let shareStream=null,shareSource=null,sharePaused=false,lastShot=null;
+ const stopShare=()=>{if(shareStream)shareStream.getTracks().forEach(t=>t.stop());shareStream=null;shareSource=null;sharePaused=false;$('#screenPreview').srcObject=null;$('#screenPreview').style.display='none';$('#screenState').textContent='Not sharing.';$('#screenPause').textContent='Pause'};
+ $('#screenSources').onclick=async()=>{
+  if(!window.ultronDesktop?.getScreenSources)return toast('Native desktop capture requires the Electron app window.');
+  try{const sources=await window.ultronDesktop.getScreenSources();$('#screenChoices').innerHTML=sources.map((x,i)=>'<button class="btn" data-source="'+i+'" style="display:flex;align-items:center;gap:8px"><img alt="" src="'+x.thumbnail+'" style="width:100px;height:56px;object-fit:cover"><span>'+safeText(x.name)+'</span></button>').join('')||'No screens/windows available.';$('#screenChoices')._sources=sources}
+  catch(e){toast('Could not list screen sources: '+e.message)}
+ };
+ $('#screenChoices').onclick=async e=>{
+  const b=e.target.closest('[data-source]');if(!b)return;const source=$('#screenChoices')._sources?.[Number(b.dataset.source)];if(!source)return;
+  confirmBox('Start sharing "'+source.name+'"? The sharing indicator will remain visible. Only screenshots you explicitly submit are sent to the configured vision model.',async()=>{
+   try{stopShare();const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:source.id,maxWidth:1920,maxHeight:1080}}});
+    shareStream=stream;shareSource=source;const v=$('#screenPreview');v.srcObject=stream;v.style.display='block';await v.play();$('#screenState').textContent='● SHARING: '+source.name+' — ULTRON desktop capture active';toast('Screen sharing started');stream.getVideoTracks()[0].addEventListener('ended',stopShare,{once:true});
+   }catch(e){stopShare();toast('Screen capture failed: '+e.message)}
+  });
+ };
+ $('#screenStop').onclick=()=>{stopShare();toast('Screen sharing stopped')};
+ $('#screenPause').onclick=()=>{if(!shareStream)return toast('Start sharing first');sharePaused=!sharePaused;shareStream.getVideoTracks().forEach(t=>t.enabled=!sharePaused);$('#screenPause').textContent=sharePaused?'Resume':'Pause';$('#screenState').textContent=(sharePaused?'Ⅱ PAUSED: ':'● SHARING: ')+(shareSource?.name||'screen')};
+ $('#screenShot').onclick=()=>{
+  if(!shareStream||sharePaused)return toast('Start or resume screen sharing first');
+  const v=$('#screenPreview'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);lastShot=c.toDataURL('image/jpeg',.82);
+  confirmBox('Send this screenshot to '+(H.provider||'the configured AI')+' for visual analysis? It may contain private information.',async()=>{try{setSt('thinking');const r=await J('/api/vision',{image:lastShot,prompt:'Describe the visible screen and help with the user request.'});setSt('idle');say(r.text,'Analyze current screen')}catch(e){setSt('idle');toast(e.message)}});
+ };
+ async function drawCredentials(){
+  try{const r=await J('/api/credentials');$('#credList').innerHTML=r.entries.map(x=>'<div class="box" style="padding:10px"><b>'+safeText(x.label)+'</b><div class="mut">'+safeText(x.domain)+' · '+safeText(x.username)+'</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-reveal="'+safeText(x.id)+'">Copy password…</button><button class="btn" data-delete="'+safeText(x.id)+'">Delete…</button></div></div>').join('')||'<span class="mut">No saved credentials.</span>'}catch(e){$('#credList').textContent=e.message}
+ }
+ $('#credSave').onclick=()=>{
+  const site=$('#credSite').value,username=$('#credUser').value,password=$('#credPass').value,label=$('#credLabel').value;
+  if(!site||!username||!password)return toast('Enter website, username and password');
+  confirmBox('Encrypt and save this credential for the exact HTTPS domain '+site+'?',async()=>{try{await J('/api/credentials',{site,username,password,label});$('#credPass').value='';toast('Credential encrypted and saved');drawCredentials()}catch(e){toast(e.message)}});
+ };
+ $('#credList').onclick=e=>{
+  const del=e.target.closest('[data-delete]');if(del){confirmBox('Permanently delete this saved credential?',async()=>{try{await J('/api/credentials/delete',{id:del.dataset.delete});drawCredentials();toast('Credential deleted')}catch(x){toast(x.message)}});return}
+  const rev=e.target.closest('[data-reveal]');if(rev){
+   const origin=$('#credSite').value.trim();if(!origin)return toast('Enter the exact HTTPS website URL in the Website field first');
+   confirmBox('Release this password only if the website hostname exactly matches '+origin+'? The password will be copied to your clipboard.',async()=>{try{const x=await J('/api/credentials/reveal',{id:rev.dataset.reveal,origin});await navigator.clipboard.writeText(x.password);toast('Password copied. Clipboard contents are sensitive.')}catch(err){toast(err.message)}});
+  }
+ };
+ drawCredentials();
+ $('#v-settings').insertAdjacentHTML('beforeend','<h2 style="margin-top:22px">PERSONALITY</h2><label>Response style <select id="personality" style="background:#140a0c;color:inherit;border:1px solid #4a1519;padding:6px;border-radius:4px"><option value="normal">Normal</option><option value="sarcastic">Sarcastic</option><option value="butler">British Butler</option><option value="roast">Roast Mode</option></select></label><p class="mut">Roast Mode stays playful and avoids personal or identity-based attacks.</p>');
+ $('#personality').onchange=async e=>{try{await J('/api/personality',{mode:e.target.value});toast(e.target.value==='roast'?'Roast Mode enabled. Brace yourself.':'Personality updated')}catch(x){toast(x.message)}};
+
 setTimeout(()=>say(greet()),1200);
 if(!H.ai){try{go('settings')}catch{}}
 toast(H.offline?(H.ollamaUp===false?'OFFLINE MODE — Ollama is not running. Start it first.':H.modelPulled===false?'OFFLINE MODE — run: ollama pull '+H.model:'OFFLINE MODE · local AI: '+H.model):H.ai?'ULTRON connected · AI: '+H.provider+(H.auto&&H.provider!=='ollama'?' (switches to local when offline)':'')+' · voice: '+(H.tts?(H.ttsProvider==='fish'?'Fish Audio':'ElevenLabs'):'browser'):'Setup needed: add a Gemini key in Settings, or start Ollama');
