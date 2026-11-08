@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class UltronSession {
@@ -27,37 +28,42 @@ class UltronSession {
 
 class UltronApi {
   UltronApi({http.Client? client}) : _client = client ?? http.Client();
-
+  static const _storage = FlutterSecureStorage();
   final http.Client _client;
 
   Uri _uri(String path) {
     final base = dotenv.env['ULTRON_API_BASE_URL']?.trim();
     if (base == null || base.isEmpty || base.contains('your-ultron-api')) {
-      throw const FormatException(
-        'Set ULTRON_API_BASE_URL in mobile/.env before connecting.',
-      );
+      throw const FormatException('Set ULTRON_API_BASE_URL in mobile/.env before connecting.');
     }
     return Uri.parse('${base.replaceFirst(RegExp(r'/+$'), '')}$path');
   }
+
+  Future<void> saveDeviceToken(String token) async {
+    await _storage.write(key: 'ultron_device_token', value: token.trim());
+  }
+
+  Future<bool> hasDeviceToken() async =>
+      (await _storage.read(key: 'ultron_device_token'))?.isNotEmpty ?? false;
 
   Future<UltronSession> createSession(String mode) async {
     if (mode != 'companion' && mode != 'independent') {
       throw ArgumentError.value(mode, 'mode');
     }
-    final response = await _client
-        .post(
-          _uri('/api/mobile/session'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode({'mode': mode}),
-        )
-        .timeout(const Duration(seconds: 20));
+    final token = await _storage.read(key: 'ultron_device_token');
+    if (token == null || token.isEmpty) {
+      throw Exception('Pair this device with ULTRON before starting a call.');
+    }
+    final response = await _client.post(
+      _uri('/api/mobile/session'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      body: jsonEncode({'mode': mode}),
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200) {
       throw Exception('ULTRON backend error (${response.statusCode}): ${response.body}');
     }
-    return UltronSession.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
+    return UltronSession.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   void dispose() => _client.close();
