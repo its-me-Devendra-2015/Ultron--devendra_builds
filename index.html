@@ -65,7 +65,7 @@ nav i{font-style:normal;color:var(--red);filter:drop-shadow(0 0 4px var(--red));
 .pane{padding:16px;overflow:auto}
 .pane h2{font:700 18px Orbitron;color:var(--red);margin-bottom:12px}
 #log{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px}
-.m{padding:8px 12px;border-radius:8px;max-width:80%;background:#1a0a0c}.m.u{align-self:flex-end;background:#3a0b0f}
+.m{padding:12px 14px;border-radius:8px;max-width:min(92%,900px);background:#1a0a0c;line-height:1.55;overflow-wrap:anywhere;white-space:normal}.m.u{align-self:flex-end;background:#3a0b0f}.m p{margin:0 0 10px}.m p:last-child{margin-bottom:0}.m h1,.m h2,.m h3,.m h4{font-family:Orbitron,sans-serif;color:var(--red);margin:14px 0 8px;line-height:1.3}.m h1{font-size:20px}.m h2{font-size:17px}.m h3{font-size:15px}.m ul,.m ol{padding-left:24px;margin:8px 0}.m li{margin:3px 0}.m blockquote{border-left:3px solid var(--red);padding:5px 12px;margin:8px 0;color:#d6aaaa;background:#16090a}.m table{border-collapse:collapse;width:100%;margin:10px 0;display:block;overflow-x:auto}.m th,.m td{border:1px solid #5a2529;padding:7px 10px;text-align:left}.m th{color:#ff7777;background:#260b0e}.m code{font-family:Consolas,monospace;background:#090607;padding:2px 5px;border-radius:4px;color:#ffb17c}.m pre{position:relative;background:#080607;border:1px solid #512025;border-radius:8px;padding:30px 12px 12px;overflow:auto;margin:10px 0;max-width:100%}.m pre code{background:none;padding:0;color:#f0c6c6;white-space:pre}.m .copy-code{position:absolute;right:8px;top:6px;background:#360b10;color:#fff;border:1px solid #a52b33;border-radius:5px;padding:4px 8px;cursor:pointer}.m .tok-key{color:#ff7777}.m .tok-str{color:#b9d98b}.m .tok-com{color:#8e8585}.m .tok-num{color:#d9adff}.m a{color:#ff9b72}
 input[type=text],input[type=url]{background:#0a0506;border:1px solid #5a1519;color:var(--tx);padding:8px;border-radius:6px;font:inherit}
 label{display:flex;align-items:center;gap:8px;margin:10px 0}
 #modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.75);display:none;place-items:center}
@@ -102,7 +102,9 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
   </div>
  </div>
  <div class="view box pane" id="v-assistant"><h2>ASSISTANT</h2><div id="log"></div></div>
- <div class="view box pane" id="v-tools"><h2>TOOLS</h2>
+ <div class="view box pane" id="v-computer"><h2>COMPUTER CONTROL</h2><p class="mut">Every desktop action requires approval. Emergency stop blocks further automation.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="winRefresh">Refresh windows</button><button class="btn red" id="autoStop">EMERGENCY STOP</button><button class="btn" id="autoResume">Resume</button></div><div id="autoStatus" class="mut">Automation idle.</div><div id="windowList" style="display:grid;gap:8px;margin-top:12px"></div><h2 style="margin-top:24px">LIVE SCREEN SHARING</h2><p class="mut">Select a display or window. Sharing is opt-in and can be stopped at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" id="screenSources">Choose screen/window</button><button class="btn red" id="screenStop">Stop sharing</button><button class="btn" id="screenPause">Pause</button><button class="btn" id="screenShot">Capture screenshot</button></div><div id="screenChoices" style="display:flex;gap:8px;flex-wrap:wrap"></div><video id="screenPreview" autoplay muted playsinline style="width:100%;max-height:360px;display:none;border:1px solid #5a1519;border-radius:8px"></video><div id="screenState" class="mut">Not sharing.</div></div>
+  <div class="view box pane" id="v-credentials"><h2>CREDENTIAL VAULT</h2><p class="mut">Saved secrets are encrypted with Windows DPAPI. Credentials are only released after exact HTTPS domain matching and a separate user confirmation. Passwords are never sent to AI.</p><div style="display:grid;gap:8px;max-width:560px;margin:12px 0"><input id="credSite" type="url" placeholder="https://example.com"><input id="credLabel" type="text" placeholder="Label (optional)"><input id="credUser" type="text" placeholder="Username"><input id="credPass" type="password" placeholder="Password"><button class="btn red" id="credSave">Save encrypted credential</button></div><div id="credList" style="display:grid;gap:8px"></div></div>
+  <div class="view box pane" id="v-tools"><h2>TOOLS</h2>
   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-t="sysinfo">System Info</button><button class="btn" data-t="speak">Test Speech Output</button><button class="btn" data-t="copy">Copy Activity Log</button><button class="btn red" data-t="clear">Clear Activity History…</button></div>
   <p class="mut" style="margin-top:12px">Tools run inside the browser sandbox. Native actions need a local ULTRON backend, which is not connected.</p></div>
  <div class="view box pane" id="v-files"><h2>FILES</h2>
@@ -135,7 +137,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
 <div id="toast"></div>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const NAV=[["home","⌂","Home"],["assistant","💬","Assistant"],["tools","🛠","Tools"],["files","📁","Files"],["apps","▦","Apps"],["settings","⚙","Settings"]];
+const NAV=[["home","⌂","Home"],["assistant","💬","Assistant"],["computer","▣","Computer"],["credentials","🔐","Credentials"],["tools","🛠","Tools"],["files","📁","Files"],["apps","▦","Apps"],["settings","⚙","Settings"]];
 $("#nav").innerHTML=NAV.map(n=>`<button data-v="${n[0]}"><i>${n[1]}</i><span>${n[2]}</span></button>`).join("");
 function go(v){$$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));$$("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v))}
 $("#nav").onclick=e=>{const b=e.target.closest("button");b&&go(b.dataset.v)};go("home");
@@ -180,6 +182,57 @@ $("#aadd").onclick=()=>{const n=$("#an").value.trim(),u=$("#au").value.trim();if
 const setSt=(s,l)=>{const e=$("#st");e.className=s;e.textContent=l||s.toUpperCase()};
 function speak(t){if(!$("#tts").checked||!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);u.onstart=()=>setSt("speaking");u.onend=()=>setSt(rec?"listening":"idle");speechSynthesis.cancel();speechSynthesis.speak(u)}
 function say(t,user){const l=$("#log");if(user)l.insertAdjacentHTML("beforeend",`<div class="m u">${esc(user)}</div>`);l.insertAdjacentHTML("beforeend",`<div class="m">${esc(t)}</div>`);l.scrollTop=l.scrollHeight;$("#resp").innerHTML="<b>ULTRON:</b> "+esc(t);speak(t)}
+
+ // Safe Markdown renderer: raw HTML is escaped before any formatting is generated.
+ const mdInline=input=>{
+  let x=esc(input);
+  x=x.replace(/\x60([^\x60]+)\x60/g,'<code>$1</code>');
+  x=x.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>').replace(/~~([^~]+)~~/g,'<del>$1</del>');
+  x=x.replace(/\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  return x;
+ };
+ const codeHighlight=(code,lang)=>{
+  const escaped=esc(code);
+  if(!/^(js|javascript|ts|typescript|json|py|python|html|css|bash|sh|powershell|ps1|sql|dart|java|c|cpp|cs)$/i.test(lang))return escaped;
+  return escaped.replace(/(\/\/[^\n]*|#[^\n]*|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\b(?:const|let|var|function|return|async|await|if|else|for|while|class|new|throw|try|catch|import|from|export|default|true|false|null|None|def|print|SELECT|FROM|WHERE|CREATE|PROCEDURE|BEGIN|END|int|string|public|private|static|void)\b|\b\d+(?:\.\d+)?\b)/gi,m=>'<span class="'+(/^\/\//.test(m)||/^#/.test(m)?'tok-com':/^["']/.test(m)?'tok-str':/^\d/.test(m)?'tok-num':'tok-key')+'">'+m+'</span>');
+ };
+ function renderMarkdown(raw){
+  const blocks=[];let src=String(raw??'').replace(/\r\n?/g,'\n').replace(/\x60{3}([a-zA-Z0-9_+-]*)[ \t]*\n([\s\S]*?)\x60{3}/g,(_,lang,code)=>{
+   const i=blocks.length;blocks.push('<pre><button class="copy-code" type="button">Copy code</button><code class="language-'+esc(lang)+'">'+codeHighlight(code,lang)+'</code></pre>');return '\n@@CODE'+i+'@@\n';
+  });
+  const lines=src.split('\n'),out=[];let i=0;
+  const isTable=n=>n+1<lines.length&&lines[n].includes('|')&&/^\s*\|?\s*:?-{3,}/.test(lines[n+1]);
+  while(i<lines.length){
+   const line=lines[i],trim=line.trim();if(!trim){i++;continue}
+   const code=trim.match(/^@@CODE(\d+)@@$/);if(code){out.push(blocks[+code[1]]);i++;continue}
+   if(/^#{1,6}\s/.test(trim)){const n=trim.match(/^#+/)[0].length,h=Math.min(n,4);out.push('<h'+h+'>'+mdInline(trim.slice(n).trim())+'</h'+h+'>');i++;continue}
+   if(isTable(i)){
+    const cells=v=>v.trim().replace(/^\||\|$/g,'').split('|').map(x=>x.trim());
+    const head=cells(line);i+=2;let rows='';
+    while(i<lines.length&&lines[i].includes('|')&&lines[i].trim()){rows+='<tr>'+cells(lines[i]).map(c=>'<td>'+mdInline(c)+'</td>').join('')+'</tr>';i++}
+    out.push('<table><thead><tr>'+head.map(c=>'<th>'+mdInline(c)+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table>');continue;
+   }
+   if(/^>\s?/.test(trim)){let q=[];while(i<lines.length&&/^\s*>/.test(lines[i]))q.push(mdInline(lines[i++].replace(/^\s*>\s?/,'')));out.push('<blockquote>'+q.join('<br>')+'</blockquote>');continue}
+   if(/^[-*+]\s/.test(trim)||/^\d+[.)]\s/.test(trim)){
+    const ordered=/^\d+[.)]\s/.test(trim),tag=ordered?'ol':'ul',items=[];
+    while(i<lines.length&&(/^\s*[-*+]\s/.test(lines[i])||/^\s*\d+[.)]\s/.test(lines[i]))){items.push('<li>'+mdInline(lines[i++].replace(/^\s*(?:[-*+]\s|\d+[.)]\s)/,''))+'</li>')}
+    out.push('<'+tag+'>'+items.join('')+'</'+tag+'>');continue;
+   }
+   let para=[trim];i++;
+   while(i<lines.length&&lines[i].trim()&&!/^#{1,6}\s|^>\s?|^[-*+]\s|^\d+[.)]\s|^@@CODE\d+@@$/.test(lines[i].trim())&&!isTable(i)){para.push(lines[i++].trim())}
+   out.push('<p>'+para.map(mdInline).join('<br>')+'</p>');
+  }
+  return out.join('');
+ }
+ const baseSay=say;
+ say=function(t,user){
+  const l=$('#log');
+  if(user){const u=document.createElement('div');u.className='m u';u.textContent=String(user);l.appendChild(u)}
+  const a=document.createElement('div');a.className='m';a.innerHTML=renderMarkdown(t);l.appendChild(a);
+  l.scrollTop=l.scrollHeight;$('#resp').innerHTML='<b>ULTRON:</b> '+esc(t);speak(String(t));
+ };
+ $('#log').addEventListener('click',e=>{const b=e.target.closest('.copy-code');if(!b)return;const code=b.parentElement.querySelector('code');navigator.clipboard.writeText(code?.textContent||'').then(()=>toast('Code copied'),()=>toast('Clipboard unavailable'))});
+
 // command engine (local intents only; no backend connected)
 function run(text,mode){text=text.trim();if(!text&&mode!=="assist")return;
  $("#resp").innerHTML="<b>You:</b> "+esc(text);setSt("thinking");logAct((mode?mode.toUpperCase()+": ":"")+text);const q=text.toLowerCase();
