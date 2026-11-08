@@ -1,5 +1,6 @@
 // ULTRON desktop app (Electron): its own window, no browser. Hosts the local server and shows it.
 const {app,BrowserWindow,Menu,session,shell,ipcMain,desktopCapturer}=require('electron'),crypto=require('crypto'),net=require('net');
+const automation=require('./automation');
 process.on('uncaughtException',e=>console.error('ULTRON error:',e&&e.stack||e));
 if(!app.requestSingleInstanceLock())app.quit();
 const free=p=>new Promise(r=>{const s=net.createServer().once('error',()=>r(false)).once('listening',()=>s.close(()=>r(true))).listen(p,'127.0.0.1')});
