@@ -102,7 +102,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
   </div>
  </div>
  <div class="view box pane" id="v-assistant"><h2>ASSISTANT</h2><div id="log"></div></div>
- <div class="view box pane" id="v-computer"><h2>COMPUTER CONTROL</h2><p class="mut">Every desktop action requires approval. Emergency stop blocks further automation.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="winRefresh">Refresh windows</button><button class="btn red" id="autoStop">EMERGENCY STOP</button><button class="btn" id="autoResume">Resume</button></div><div id="autoStatus" class="mut">Automation idle.</div><div id="windowList" style="display:grid;gap:8px;margin-top:12px"></div><h2 style="margin-top:24px">LIVE SCREEN SHARING</h2><p class="mut">Select a display or window. Sharing is opt-in and can be stopped at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" id="screenSources">Choose screen/window</button><button class="btn red" id="screenStop">Stop sharing</button><button class="btn" id="screenPause">Pause</button><button class="btn" id="screenShot">Capture screenshot</button></div><div id="screenChoices" style="display:flex;gap:8px;flex-wrap:wrap"></div><video id="screenPreview" autoplay muted playsinline style="width:100%;max-height:360px;display:none;border:1px solid #5a1519;border-radius:8px"></video><div id="screenState" class="mut">Not sharing.</div></div>
+ <div class="view box pane" id="v-computer"><h2>COMPUTER CONTROL</h2><p class="mut">Every desktop action requires approval. Emergency stop blocks further automation.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="winRefresh">Refresh windows</button><button class="btn red" id="autoStop">EMERGENCY STOP</button><button class="btn" id="autoResume">Resume</button></div><div id="autoStatus" class="mut">Automation idle.</div><div id="windowList" style="display:grid;gap:8px;margin-top:12px"></div><div class="box" style="padding:12px;margin-top:12px"><h3>APPROVED QUICK LAUNCH</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-launch="notepad">Notepad</button><button class="btn" data-launch="calculator">Calculator</button><button class="btn" data-launch="file explorer">File Explorer</button><button class="btn" data-launch="task manager">Task Manager</button><button class="btn" data-launch="settings">Windows Settings</button></div></div><div class="box" style="padding:12px;margin-top:12px"><h3>KEYBOARD INPUT</h3><input id="autoTypeText" type="text" maxlength="1000" placeholder="Text to type into the currently focused app" style="width:100%"><button class="btn red" id="autoType" style="margin-top:8px">Type text…</button><input id="autoShortcut" type="text" maxlength="80" placeholder="Shortcut, e.g. CTRL+S" style="width:100%;margin-top:8px"><button class="btn" id="autoKeys" style="margin-top:8px">Send shortcut…</button></div><div class="box" style="padding:12px;margin-top:12px"><h3>WINDOW UI ELEMENTS</h3><input id="controlTitle" type="text" placeholder="Part of window title" style="width:100%"><button class="btn" id="readControls" style="margin-top:8px">Read UI controls</button><div id="controlResults" class="mut" style="margin-top:8px"></div></div><h2 style="margin-top:24px">LIVE SCREEN SHARING</h2><p class="mut">Select a display or window. Sharing is opt-in and can be stopped at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" id="screenSources">Choose screen/window</button><button class="btn red" id="screenStop">Stop sharing</button><button class="btn" id="screenPause">Pause</button><button class="btn" id="screenShot">Capture screenshot</button></div><div id="screenChoices" style="display:flex;gap:8px;flex-wrap:wrap"></div><video id="screenPreview" autoplay muted playsinline style="width:100%;max-height:360px;display:none;border:1px solid #5a1519;border-radius:8px"></video><div id="screenState" class="mut">Not sharing.</div></div>
   <div class="view box pane" id="v-credentials"><h2>CREDENTIAL VAULT</h2><p class="mut">Saved secrets are encrypted with Windows DPAPI. Credentials are only released after exact HTTPS domain matching and a separate user confirmation. Passwords are never sent to AI.</p><div style="display:grid;gap:8px;max-width:560px;margin:12px 0"><input id="credSite" type="url" placeholder="https://example.com"><input id="credLabel" type="text" placeholder="Label (optional)"><input id="credUser" type="text" placeholder="Username"><input id="credPass" type="password" placeholder="Password"><button class="btn red" id="credSave">Save encrypted credential</button></div><div id="credList" style="display:grid;gap:8px"></div></div>
   <div class="view box pane" id="v-tools"><h2>TOOLS</h2>
   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-t="sysinfo">System Info</button><button class="btn" data-t="speak">Test Speech Output</button><button class="btn" data-t="copy">Copy Activity Log</button><button class="btn red" data-t="clear">Clear Activity History…</button></div>
@@ -134,7 +134,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
  <div class="box"><h3>NEWS &amp; FEEDS</h3><div class="mut">No feed provider configured.</div></div>
 </aside></div>
 <div id="modal"><div class="box"><div id="mt"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" id="mn">Cancel</button><button class="btn red" id="my">Confirm</button></div></div></div>
-<div id="toast"></div>
+<div id="toast"></div><div id="screen-indicator" style="display:none;position:fixed;top:8px;right:12px;z-index:90;background:#5a0b10;border:1px solid #ff2a2a;border-radius:18px;padding:6px 12px;color:#fff;font:700 11px Orbitron;box-shadow:0 0 14px #ff2a2a">● SCREEN SHARING</div>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const NAV=[["home","⌂","Home"],["assistant","💬","Assistant"],["computer","▣","Computer"],["credentials","🔐","Credentials"],["tools","🛠","Tools"],["files","📁","Files"],["apps","▦","Apps"],["settings","⚙","Settings"]];
@@ -380,7 +380,7 @@ async function refreshFeeds(){if(!fbox)return;const d=fbox.querySelector('div');
 refreshFeeds();setInterval(refreshFeeds,600000);
 
 // saved conversation
-(async()=>{try{const h=(await J('/api/history')).messages;if(!h.length)return;const l=$('#log');h.forEach(m=>{msgs.push(m);l.insertAdjacentHTML('beforeend',`<div class="m${m.role==='user'?' u':''}">${esc(m.content)}</div>`)});l.scrollTop=l.scrollHeight}catch{}})();
+(async()=>{try{const h=(await J('/api/history')).messages;if(!h.length)return;const l=$('#log');h.forEach(m=>{msgs.push(m);l.insertAdjacentHTML('beforeend',`<div class="m${m.role==='user'?' u':''}">${m.role==='user'?esc(m.content):renderMarkdown(m.content)}</div>`)});l.scrollTop=l.scrollHeight}catch{}})();
 
 // settings: brain mode + setup
 $('#v-settings').insertAdjacentHTML('beforeend',`<h2 style="margin-top:22px">BRAIN</h2><div id="bst" class="mut"></div>
@@ -450,12 +450,21 @@ const _v2=run;run=async function(text,mode){const t=String(text||'').trim(),q=t.
   }catch(e){$('#autoStatus').textContent=e.message}
  }
  $('#winRefresh').onclick=refreshWindows;
+
+ $('#v-computer').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-launch]');if(!b)return;
+  confirmBox('Launch '+b.dataset.launch+'?',async()=>{try{await J('/api/automation/action',{action:{type:'launch',name:b.dataset.launch}});toast('Launch command sent')}catch(x){toast(x.message)}});
+ });
+ $('#autoType').onclick=()=>{const value=$('#autoTypeText').value;if(!value)return toast('Enter text first');confirmBox('Type this text into the currently focused window? Review it carefully.',async()=>{try{await J('/api/automation/action',{action:{type:'type',value}});toast('Text sent to focused window')}catch(x){toast(x.message)}})};
+ $('#autoKeys').onclick=()=>{const value=$('#autoShortcut').value;if(!value)return toast('Enter a shortcut first');confirmBox('Send keyboard shortcut '+value+' to the currently focused window?',async()=>{try{await J('/api/automation/action',{action:{type:'keys',value:value.replace(/CTRL/ig,'^').replace(/ALT/ig,'%').replace(/SHIFT/ig,'+').replace(/WIN/ig,'{LWIN}')}});toast('Shortcut sent')}catch(x){toast(x.message)}})};
+ $('#readControls').onclick=async()=>{const title=$('#controlTitle').value.trim();if(!title)return toast('Enter a window title');try{const r=await J('/api/automation/controls',{title});$('#controlResults').innerHTML=r.controls.map(c=>'<div>'+safeText(c.name)+' <span class="mut">('+safeText(c.type)+')</span></div>').join('')||'No named controls found.'}catch(e){toast(e.message)}};
+
  $('#windowList').onclick=e=>{const b=e.target.closest('[data-close]');if(!b)return;const pid=Number(b.dataset.close);confirmBox('Ask Windows to close this application gracefully? PID '+pid,async()=>{try{await J('/api/automation/action',{action:{type:'close',pid}});toast('Window closed');refreshWindows()}catch(x){toast(x.message)}})};
  $('#autoStop').onclick=async()=>{try{await J('/api/automation/stop',{});window.ultronDesktop?.emergencyStop();$('#autoStatus').textContent='EMERGENCY STOP ACTIVE';toast('Automation stopped')}catch(e){toast(e.message)}};
  $('#autoResume').onclick=()=>confirmBox('Resume desktop automation? New actions will still require approval.',async()=>{try{await J('/api/automation/resume',{});$('#autoStatus').textContent='Automation resumed';toast('Automation resumed')}catch(e){toast(e.message)}});
  refreshWindows();
  let shareStream=null,shareSource=null,sharePaused=false,lastShot=null;
- const stopShare=()=>{if(shareStream)shareStream.getTracks().forEach(t=>t.stop());shareStream=null;shareSource=null;sharePaused=false;$('#screenPreview').srcObject=null;$('#screenPreview').style.display='none';$('#screenState').textContent='Not sharing.';$('#screenPause').textContent='Pause'};
+ const stopShare=()=>{if(shareStream)shareStream.getTracks().forEach(t=>t.stop());shareStream=null;shareSource=null;sharePaused=false;$('#screenPreview').srcObject=null;$('#screenPreview').style.display='none';$('#screenState').textContent='Not sharing.';$('#screen-indicator').style.display='none';$('#screenPause').textContent='Pause'};
  $('#screenSources').onclick=async()=>{
   if(!window.ultronDesktop?.getScreenSources)return toast('Native desktop capture requires the Electron app window.');
   try{const sources=await window.ultronDesktop.getScreenSources();$('#screenChoices').innerHTML=sources.map((x,i)=>'<button class="btn" data-source="'+i+'" style="display:flex;align-items:center;gap:8px"><img alt="" src="'+x.thumbnail+'" style="width:100px;height:56px;object-fit:cover"><span>'+safeText(x.name)+'</span></button>').join('')||'No screens/windows available.';$('#screenChoices')._sources=sources}
@@ -465,12 +474,12 @@ const _v2=run;run=async function(text,mode){const t=String(text||'').trim(),q=t.
   const b=e.target.closest('[data-source]');if(!b)return;const source=$('#screenChoices')._sources?.[Number(b.dataset.source)];if(!source)return;
   confirmBox('Start sharing "'+source.name+'"? The sharing indicator will remain visible. Only screenshots you explicitly submit are sent to the configured vision model.',async()=>{
    try{stopShare();const stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{mandatory:{chromeMediaSource:'desktop',chromeMediaSourceId:source.id,maxWidth:1920,maxHeight:1080}}});
-    shareStream=stream;shareSource=source;const v=$('#screenPreview');v.srcObject=stream;v.style.display='block';await v.play();$('#screenState').textContent='● SHARING: '+source.name+' — ULTRON desktop capture active';toast('Screen sharing started');stream.getVideoTracks()[0].addEventListener('ended',stopShare,{once:true});
+    shareStream=stream;shareSource=source;const v=$('#screenPreview');v.srcObject=stream;v.style.display='block';await v.play();$('#screenState').textContent='● SHARING: '+source.name+' — ULTRON desktop capture active';$('#screen-indicator').style.display='block';$('#screen-indicator').textContent='● SHARING · '+source.name;toast('Screen sharing started');stream.getVideoTracks()[0].addEventListener('ended',stopShare,{once:true});
    }catch(e){stopShare();toast('Screen capture failed: '+e.message)}
   });
  };
  $('#screenStop').onclick=()=>{stopShare();toast('Screen sharing stopped')};
- $('#screenPause').onclick=()=>{if(!shareStream)return toast('Start sharing first');sharePaused=!sharePaused;shareStream.getVideoTracks().forEach(t=>t.enabled=!sharePaused);$('#screenPause').textContent=sharePaused?'Resume':'Pause';$('#screenState').textContent=(sharePaused?'Ⅱ PAUSED: ':'● SHARING: ')+(shareSource?.name||'screen')};
+ $('#screenPause').onclick=()=>{if(!shareStream)return toast('Start sharing first');sharePaused=!sharePaused;shareStream.getVideoTracks().forEach(t=>t.enabled=!sharePaused);$('#screenPause').textContent=sharePaused?'Resume':'Pause';$('#screenState').textContent=(sharePaused?'Ⅱ PAUSED: ':'● SHARING: ')+(shareSource?.name||'screen');$('#screen-indicator').textContent=(sharePaused?'Ⅱ PAUSED · ':'● SHARING · ')+(shareSource?.name||'screen')};
  $('#screenShot').onclick=()=>{
   if(!shareStream||sharePaused)return toast('Start or resume screen sharing first');
   const v=$('#screenPreview'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);lastShot=c.toDataURL('image/jpeg',.82);
@@ -492,6 +501,7 @@ const _v2=run;run=async function(text,mode){const t=String(text||'').trim(),q=t.
   }
  };
  drawCredentials();
+ J('/api/personality').then(x=>$('#personality').value=x.mode).catch(()=>{});
  $('#v-settings').insertAdjacentHTML('beforeend','<h2 style="margin-top:22px">PERSONALITY</h2><label>Response style <select id="personality" style="background:#140a0c;color:inherit;border:1px solid #4a1519;padding:6px;border-radius:4px"><option value="normal">Normal</option><option value="sarcastic">Sarcastic</option><option value="butler">British Butler</option><option value="roast">Roast Mode</option></select></label><p class="mut">Roast Mode stays playful and avoids personal or identity-based attacks.</p>');
  $('#personality').onchange=async e=>{try{await J('/api/personality',{mode:e.target.value});toast(e.target.value==='roast'?'Roast Mode enabled. Brace yourself.':'Personality updated')}catch(x){toast(x.message)}};
 
