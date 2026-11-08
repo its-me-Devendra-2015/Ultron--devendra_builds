@@ -36,6 +36,8 @@ jobs:
           cache: true
       - name: Generate native platform runners
         run: flutter create --platforms=android,ios .
+      - name: Configure camera and microphone permissions
+        run: python scripts/configure_native_permissions.py
       - name: Resolve dependencies
         run: flutter pub get
       - name: Analyze
