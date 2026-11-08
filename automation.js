@@ -17,7 +17,7 @@ async function windows(){
 }
 async function controls(title){
  check();title=safeName(title);const q=title.replace(/'/g,"''");
- const script="Add-Type -AssemblyName UIAutomationClient; $root=[Windows.Automation.AutomationElement]::RootElement; $all=$root.FindAll([Windows.Automation.TreeScope]::Children,[Windows.Automation.Condition]::TrueCondition); $w=$null; foreach($e in $all){if($e.Current.Name -like '*"+q+"*'){$w=$e;break}}; if($null -eq $w){throw 'Window not found'}; $items=$w.FindAll([Windows.Automation.TreeScope]::Descendants,[Windows.Automation.Condition]::TrueCondition); $out=@(); for($i=0;$i -lt [Math]::Min($items.Count,250);$i++){ $e=$items.Item($i); $n=$e.Current.Name; if($n){$out+=@{name=$n;type=$e.Current.ControlType.ProgrammaticName;enabled=$e.Current.IsEnabled;automationId=$e.Current.AutomationId}} }; $out | ConvertTo-Json -Compress";
+ const script="Add-Type -AssemblyName UIAutomationClient; $root=[Windows.Automation.AutomationElement]::RootElement; $all=$root.FindAll([Windows.Automation.TreeScope]::Children,[Windows.Automation.Condition]::TrueCondition); $w=$null; foreach($e in $all){if($e.Current.Name -like '*"+q+"*'){$w=$e;break}}; if($null -eq $w){throw 'Window not found'}; $items=$w.FindAll([Windows.Automation.TreeScope]::Descendants,[Windows.Automation.Condition]::TrueCondition); $out=@(); for($i=0;$i -lt [Math]::Min($items.Count,250);$i++){ $e=$items.Item($i); $n=$e.Current.Name; if($n){$out+=@{name=$n;type=$e.Current.ControlType.ProgrammaticName;enabled=$e.Current.IsEnabled;automationId=$e.Current.AutomationId}} }; if($out.Count -eq 0){'[]'}else{$out | ConvertTo-Json -Compress}";
  const raw=await runPS(script);
  try{const x=JSON.parse(raw);return Array.isArray(x)?x:[x]}catch{return []}
 }
@@ -37,7 +37,7 @@ async function execute(action){
  if(type==='keys'||type==='type'){
   const value=String(action.value||'');if(value.length>2000||/[\0]/.test(value))throw new Error('Text/shortcut is too long or invalid');
   if(type==='keys'&&!/^[\w+^%~{}()[\]]{1,80}$/.test(value))throw new Error('Unsupported shortcut syntax');
-  const sent=type==='type'?value.replace(/[+^%~(){}]/g,c=>({'+':'{+}','^':'{^}','%':'{%}','~':'{~}','(':'{(',')':'{)','{':'{{}','}':'{}}'}[c])):value;
+  const sent=type==='type'?value.replace(/[+^%~(){}]/g,c=>({'+':'{+}','^':'{^}','%':'{%}','~':'{~}','(':'{(}',')':'{)}','{':'{{}','}':'{}}'}[c])):value;
   await runPS("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('"+sent.replace(/'/g,"''")+"')");
   return {ok:true,action:type};
  }
