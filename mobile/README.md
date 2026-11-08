@@ -16,9 +16,10 @@ This is the first isolated mobile foundation: Flutter app shell, LiveKit room/ca
 ## Run
 
 1. Install Flutter stable and Android Studio / Xcode (iOS builds require macOS).
-2. From this folder run `flutter pub get`.
-3. Copy `.env.example` to `.env` and set `ULTRON_API_BASE_URL`.
-4. Run `flutter run`.
+2. From this folder run `flutter create --platforms=android,ios .` once to generate the native platform runners.
+3. Run `flutter pub get`.
+4. Set `ULTRON_API_BASE_URL` in `.env`.
+5. Run `flutter run`.
 
 ## Backend contract
 
