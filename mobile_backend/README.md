@@ -1,29 +1,27 @@
-# ULTRON Mobile backend integration
+# ULTRON Mobile backend
 
-This backend is deliberately a separate service boundary. Do not modify the existing desktop Electron server or agent just to make mobile work.
+Separate service boundary for the Flutter client. It does not modify the existing Electron desktop server or the LiveKit agent.
 
-## Required API
+## Run locally
 
-Implement `POST /api/mobile/session`:
-1. Authenticate a paired device / signed-in user.
-2. Validate `mode` as `companion` or `independent`.
-3. For companion mode, verify the paired desktop is online and authorized.
-4. Create a unique room name and short-lived participant JWT using server-side LiveKit API credentials.
-5. Dispatch the existing LiveKit agent named `my-agent` into that room.
-6. Return `server_url`, `room_name`, `participant_token`, and ISO-8601 `expires_at`.
+1. Create a Python virtual environment.
+2. Install `pip install -r requirements.txt`.
+3. Copy `.env.example` to `.env` and configure LiveKit credentials plus a long random `ULTRON_MOBILE_BEARER_TOKEN`.
+4. Start with `uvicorn app:app --host 127.0.0.1 --port 8787`.
 
-The current repository contains the ULTRON 1.3.3 Electron app, but not the local LiveKit agent files `src/agent.py`, `browser.py`, `prompts.py`, and `tools.py`. Integration must happen after those files are added to the repository or supplied to the backend workspace. Reuse the existing model router and prompt/tool modules; do not duplicate the assistant brain.
+## API
 
-## Environment variables (server only)
+- `GET /health` returns service health.
+- `POST /api/mobile/session` accepts `{"mode":"independent"}` or `{"mode":"companion"}`, requires `Authorization: Bearer <device-token>`, creates a unique room, issues a 10-minute room-scoped participant token, and explicitly dispatches `ULTRON_AGENT_NAME` (default `my-agent`).
 
-- `LIVEKIT_URL`
-- `LIVEKIT_API_KEY`
-- `LIVEKIT_API_SECRET`
-- `ULTRON_SESSION_SIGNING_SECRET`
-- `ULTRON_DESKTOP_BRIDGE_URL` (private network/service address; never accept arbitrary URLs from clients)
+The Flutter app stores the device token using platform secure storage. The current bootstrap uses a manually provisioned bearer token; production should replace it with real device pairing/OAuth and per-device revocation. Do not use one shared token across users.
 
-Never ship API secrets to Flutter. Enforce token expiry, room grants, origin/rate limits, pairing revocation, and audit logs. Companion mode should use an outbound authenticated desktop connection or a private tunnel; do not expose the desktop HTTP server directly to the public internet.
+## Companion mode
 
-## Independent mode
+Companion mode is intentionally disabled by default. Enable it only after implementing a mutually authenticated desktop bridge and an online/pairing check. Do not expose the desktop HTTP server directly to the public internet. Use an outbound desktop connection or private tunnel, strict tool allow-lists, audit logs, and explicit confirmation for destructive actions.
 
-Run the same ULTRON agent/model-router code in a hosted worker with its required provider credentials. Independent mode cannot reach a model running only on the user's offline PC. If the existing model router has Ollama-only providers, those are available only when the PC/Ollama host is online and securely reachable.
+## Existing AI brain
+
+The current GitHub snapshot contains the ULTRON 1.3.3 Electron desktop application. The local LiveKit agent modules (`src/agent.py`, `browser.py`, `prompts.py`, `tools.py`) discussed in development are not present in this repository snapshot. Deploy the same agent code and reuse its existing prompt, tools, and provider/model router; do not create a separate AI persona or duplicate model-routing implementation.
+
+Independent mode requires that shared agent/model router to be deployed. A model running only on a powered-off PC cannot serve independent mode.
