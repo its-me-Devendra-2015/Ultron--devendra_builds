@@ -28,6 +28,7 @@ The GitHub connector exposed individual file reads but not a recursive repositor
 - [x] Added provider-neutral Ollama model discovery and a Settings picker for installed Qwen, Kimi, DeepSeek, Llama, Mistral, Gemma, Phi and other chat models.
 - [x] Added explicit model selection with installed-model validation and regression tests for Qwen/Kimi family detection.
 - [x] Expanded Gmail from a one-shot unread summary into a dedicated read-only inbox: Gmail search queries, Inbox/Unread/Starred/Sent/Attachments/last-7-days filters, 20-message pages, sender/subject/date/snippets, and a full message reader with plain-text extraction. Existing OAuth `gmail.readonly` scope is preserved; no send/delete/archive/mark-read permissions were added.
+- [x] Gmail now has a direct **Sign in with Google** action in the Gmail tab; OAuth client credentials are treated as app-maintainer configuration, not something Gmail users should be asked to enter. The sign-in button opens Google's OAuth page when the app's OAuth client is configured.
 
 ## Known incomplete requirements
 - [ ] Website login-page recognition and automatic form autofill are not implemented. The vault currently supports secure storage, exact-domain-gated reveal and clipboard copy; it does not inject credentials into arbitrary websites.
