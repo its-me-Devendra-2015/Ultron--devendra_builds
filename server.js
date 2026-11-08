@@ -17,7 +17,8 @@ const PROV=OFFLINE?'ollama':(E.AI_PROVIDER||'').toLowerCase()||(GKEY?'gemini':KE
 const AUTO=!/^(0|false|no)$/i.test(E.AUTO_FALLBACK||'');let MODE=['online','offline'].includes((E.MODE||'').toLowerCase())?E.MODE.toLowerCase():'auto';
 const _fetch=globalThis.fetch;globalThis.fetch=(u,o)=>{if(OFFLINE&&!['localhost','127.0.0.1','::1','[::1]'].includes(new URL(String(u)).hostname))return Promise.reject(new Error('Blocked: offline mode'));return _fetch(u,o)};
 const HONEST='You cannot run actions yourself; the user runs them via the EXECUTE button. Never claim to have done something you did not.';
-const systemPrompt=()=>'You are ULTRON, a concise, capable desktop AI assistant. If asked who your creator is, reply exactly: "My Creator is Devendra, a great Developer, philosophist who created me". '+HONEST;
+let PERSONALITY=['normal','sarcastic','butler','roast'].includes(String(E.ROAST_MODE||'normal').toLowerCase())?String(E.ROAST_MODE||'normal').toLowerCase():'normal';
+const systemPrompt=()=>'You are ULTRON, a concise, capable desktop AI assistant. If asked who your creator is, reply exactly: "My Creator is Devendra, a great Developer, philosophist who created me". '+({normal:'Use a natural, helpful tone.',sarcastic:'Use light, clever sarcasm without being cruel.',butler:'Speak like a courteous British butler.',roast:'Use playful, witty roasts about situations, plans, or technology. Never attack protected traits, appearance, identity, or personal vulnerabilities. Keep it friendly and never abusive.'}[PERSONALITY]||'')+' '+HONEST;
 const sh=(c,a,t=6000)=>new Promise(r=>execFile(c,a,{timeout:t,windowsHide:true},(e,o)=>r(e?null:String(o).trim())));
 const cache={};const memo=async(k,ms,f)=>{const c=cache[k];if(c&&Date.now()-c.t<ms)return c.v;const v=await f();cache[k]={t:Date.now(),v};return v};
 let cpu=0,prev=os.cpus();
@@ -138,7 +139,7 @@ function saveHist(m,text){try{const last=[...m].reverse().find(x=>x.role==='user
  fs.appendFileSync(HF,JSON.stringify({t:now,role:'user',content:String(last.content).replace(/^Think it through carefully, then answer concisely: /,'').slice(0,4000)})+'\n'+JSON.stringify({t:now,role:'assistant',content:String(text).slice(0,4000)})+'\n');
  if(fs.statSync(HF).size>1e6)fs.writeFileSync(HF,fs.readFileSync(HF,'utf8').split('\n').filter(Boolean).slice(-200).join('\n')+'\n')}catch{}}
 const histRead=()=>{try{return fs.readFileSync(HF,'utf8').split('\n').filter(Boolean).slice(-40).map(l=>JSON.parse(l)).map(({role,content})=>({role,content}))}catch{return[]}};
-const CFG_KEYS=['GEMINI_API_KEY','ANTHROPIC_API_KEY','FISH_API_KEY','FISH_VOICE_ID','ELEVENLABS_API_KEY','ELEVENLABS_VOICE_ID','TTS_PROVIDER','GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','OLLAMA_MODEL','MODE','AUTO_FALLBACK','WEATHER_LAT','WEATHER_LON'];
+const CFG_KEYS=['ROAST_MODE','GEMINI_API_KEY','ANTHROPIC_API_KEY','FISH_API_KEY','FISH_VOICE_ID','ELEVENLABS_API_KEY','ELEVENLABS_VOICE_ID','TTS_PROVIDER','GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','OLLAMA_MODEL','MODE','AUTO_FALLBACK','WEATHER_LAT','WEATHER_LON'];
 const cfgStatus=()=>({keys:Object.fromEntries(CFG_KEYS.map(k=>[k,!!E[k]])),values:{OLLAMA_MODEL:E.OLLAMA_MODEL||'',AUTO_FALLBACK:AUTO?'1':'0',TTS_PROVIDER:E.TTS_PROVIDER||'auto',FISH_VOICE_ID:FVOICE,ELEVENLABS_VOICE_ID:EVOICE},envFile:path.join(ROOT,'.env'),canRestart:process.listenerCount('ultron-restart')>0});
 function cfgSave(vals){if(!vals||typeof vals!=='object')throw new Error('Bad request');const f=path.join(ROOT,'.env');let t='';try{t=fs.readFileSync(f,'utf8')}catch{}
  for(const[k,v]of Object.entries(vals)){if(!CFG_KEYS.includes(k))continue;const x=String(v).trim();if(!x)continue;if(!/^[A-Za-z0-9_.:\-\/@+=]{1,300}$/.test(x))throw new Error(k+' contains characters that are not allowed');
@@ -197,6 +198,7 @@ http.createServer(async(req,res)=>{
    if(u.pathname==='/api/credentials'){if(req.method==='GET')return send(res,200,{entries:credentials.list()});if(req.method==='POST')return send(res,200,await credentials.save(body));return send(res,405,{error:'GET/POST only'})}
    if(u.pathname==='/api/credentials/delete'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,credentials.remove(body.id))}
    if(u.pathname==='/api/credentials/reveal'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await credentials.reveal({id:body.id,origin:body.origin}))}
+   if(u.pathname==='/api/personality'){if(req.method!=='POST')return send(res,405,{error:'POST only'});const v=String(body.mode||'').toLowerCase();if(!['normal','sarcastic','butler','roast'].includes(v))throw new Error('Unsupported personality');PERSONALITY=v;cfgSave({ROAST_MODE:v});return send(res,200,{mode:PERSONALITY})}
    if(u.pathname==='/api/mode'){if(req.method!=='POST')return send(res,405,{error:'POST only'});if(!['auto','online','offline'].includes(body.mode))throw new Error('mode must be auto, online or offline');
     if(body.mode==='online'&&PROV==='ollama'&&!OFFLINE)throw new Error('Online mode needs a cloud AI key. Add your Gemini key in Settings > Setup, then restart ULTRON.');
     MODE=body.mode;onl={t:0,v:true};cloudDown=0;try{cfgSave({MODE})}catch{}return send(res,200,{mode:MODE})}
