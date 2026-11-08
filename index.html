@@ -401,7 +401,7 @@ $('#ollamaApply').onclick=async()=>{const model=$('#cfg_OLLAMA_MODEL').value;if(
 async function cfgLoad(){try{const c=await J('/api/config');for(const k of ['GEMINI_API_KEY','FISH_API_KEY']){const el=$('#cfg_'+k);if(el)el.placeholder=c.keys[k]?'saved (type to replace)':'not set'}
  $('#cfg_FISH_VOICE_ID').value=c.values.FISH_VOICE_ID||'';$('#cfg_ELEVENLABS_VOICE_ID').value=c.values.ELEVENLABS_VOICE_ID||'';$('#cfg_TTS_PROVIDER').value=c.values.TTS_PROVIDER||'auto';
  await loadOllamaModels();const h=await J('/api/health'),l=h.local||{};$('#bst').textContent=(l.up?(l.pulled?'Local AI ready: '+l.model:'Ollama is running but the model is missing. Run: ollama pull '+l.model):'Local AI not running. Install Ollama, then pull any supported model, e.g. ollama pull qwen3:4b')+' · env file: '+c.envFile;window._cfg=c}catch{}}
-$('#cfgSave').onclick=async()=>{const v={};for(const k of ['GEMINI_API_KEY','FISH_API_KEY','OLLAMA_MODEL','FISH_VOICE_ID','ELEVENLABS_VOICE_ID'])if($('#cfg_'+k).value.trim())v[k]=$('#cfg_'+k).value.trim();v.TTS_PROVIDER=$('#cfg_TTS_PROVIDER').value;
+$('#cfgSave').onclick=async()=>{const v={};for(const k of ['GEMINI_API_KEY','FISH_API_KEY','FISH_VOICE_ID','ELEVENLABS_VOICE_ID'])if($('#cfg_'+k).value.trim())v[k]=$('#cfg_'+k).value.trim();v.TTS_PROVIDER=$('#cfg_TTS_PROVIDER').value;
  try{const c=await J('/api/config',{values:v});['GEMINI_API_KEY','FISH_API_KEY'].forEach(k=>$('#cfg_'+k).value='');logAct('Settings saved');
   if(c.canRestart)confirmBox('Saved. Restart ULTRON now to apply the changes?',()=>J('/api/restart',{}).catch(()=>{}));else $('#cfgMsg').textContent='Saved. Close and reopen ULTRON to apply.';cfgLoad()}catch(e){$('#cfgMsg').textContent=e.message}};
 cfgLoad();addEventListener('focus',cfgLoad);
