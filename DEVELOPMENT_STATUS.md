@@ -25,6 +25,8 @@ The GitHub connector exposed individual file reads but not a recursive repositor
 - [x] Added safe Markdown rendering for paragraphs, headings, lists, tables, quotes, inline code and fenced code; HTML is escaped, code copy controls are provided, and prior assistant history uses the renderer.
 - [x] Added Node security tests and a Windows GitHub Actions workflow for syntax and regression checks.
 - [x] Updated Electron packaging file list for the preload and new modules.
+- [x] Added provider-neutral Ollama model discovery and a Settings picker for installed Qwen, Kimi, DeepSeek, Llama, Mistral, Gemma, Phi and other chat models.
+- [x] Added explicit model selection with installed-model validation and regression tests for Qwen/Kimi family detection.
 
 ## Known incomplete requirements
 - [ ] Website login-page recognition and automatic form autofill are not implemented. The vault currently supports secure storage, exact-domain-gated reveal and clipboard copy; it does not inject credentials into arbitrary websites.
@@ -32,7 +34,8 @@ The GitHub connector exposed individual file reads but not a recursive repositor
 - [ ] Multi-step task planning, window switching, broad file/folder navigation and browser navigation are not complete.
 - [ ] True token streaming is not implemented; current AI backend returns completed responses.
 - [ ] End-to-end testing of Gemini, Ollama/Gemma, Fish Audio, DPAPI, Windows UI Automation and Electron capture has not been performed on the target Windows PC.
-- [ ] GitHub Actions results are pending; a successful CI run has not yet been observed.
+- [ ] GitHub Actions results are pending; no workflow run has been returned for the latest upgrade commit yet.
+- [ ] The Ollama model picker and inference requests still need runtime verification against the models installed on the user's Windows PC.
 
 ## Security notes
 - Secrets are not added to AI chat messages or assistant history.
