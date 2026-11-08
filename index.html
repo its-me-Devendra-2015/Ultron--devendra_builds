@@ -101,6 +101,18 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
    <div id="quote">“The future is built by those who create it.” — Ultron</div>
   </div>
  </div>
+ 
+  <div class="view box pane" id="v-gmail"><h2>GMAIL INBOX</h2>
+   <p class="mut">Read, search and inspect your Gmail. ULTRON has read-only access: it cannot send, delete, archive or change messages.</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><input id="gmailQuery" type="search" placeholder="Search Gmail: from:, subject:, has:attachment…" style="flex:1;min-width:220px"><button class="btn red" id="gmailSearch">Search</button><button class="btn" id="gmailRefresh">Refresh</button></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn" data-gmail-q="in:inbox">Inbox</button><button class="btn" data-gmail-q="is:unread in:inbox">Unread</button><button class="btn" data-gmail-q="is:starred">Starred</button><button class="btn" data-gmail-q="in:sent">Sent</button><button class="btn" data-gmail-q="has:attachment">Attachments</button><button class="btn" data-gmail-q="newer_than:7d">Last 7 days</button></div>
+   <div id="gmailStatus" class="mut">Checking Google account…</div>
+   <div style="display:grid;grid-template-columns:minmax(260px,0.9fr) minmax(300px,1.1fr);gap:12px;margin-top:12px">
+    <div><div id="gmailCount" class="mut" style="margin-bottom:8px"></div><div id="gmailList" style="display:grid;gap:7px"></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn" id="gmailOlder" disabled>Older</button><button class="btn" id="gmailNewer" disabled>Newer</button></div></div>
+    <article class="box" style="padding:14px;min-height:260px"><div id="gmailReader" class="mut">Select an email to read it here.</div></article>
+   </div>
+  </div>
+
  <div class="view box pane" id="v-assistant"><h2>ASSISTANT</h2><div id="log"></div></div>
  <div class="view box pane" id="v-computer"><h2>COMPUTER CONTROL</h2><p class="mut">Every desktop action requires approval. Emergency stop blocks further automation.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button class="btn" id="winRefresh">Refresh windows</button><button class="btn red" id="autoStop">EMERGENCY STOP</button><button class="btn" id="autoResume">Resume</button></div><div id="autoStatus" class="mut">Automation idle.</div><div id="windowList" style="display:grid;gap:8px;margin-top:12px"></div><div class="box" style="padding:12px;margin-top:12px"><h3>APPROVED QUICK LAUNCH</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-launch="notepad">Notepad</button><button class="btn" data-launch="calculator">Calculator</button><button class="btn" data-launch="file explorer">File Explorer</button><button class="btn" data-launch="task manager">Task Manager</button><button class="btn" data-launch="settings">Windows Settings</button></div></div><div class="box" style="padding:12px;margin-top:12px"><h3>KEYBOARD INPUT</h3><input id="autoTypeText" type="text" maxlength="1000" placeholder="Text to type into the currently focused app" style="width:100%"><button class="btn red" id="autoType" style="margin-top:8px">Type text…</button><input id="autoShortcut" type="text" maxlength="80" placeholder="Shortcut, e.g. CTRL+S" style="width:100%;margin-top:8px"><button class="btn" id="autoKeys" style="margin-top:8px">Send shortcut…</button></div><div class="box" style="padding:12px;margin-top:12px"><h3>WINDOW UI ELEMENTS</h3><input id="controlTitle" type="text" placeholder="Part of window title" style="width:100%"><button class="btn" id="readControls" style="margin-top:8px">Read UI controls</button><div id="controlResults" class="mut" style="margin-top:8px"></div></div><h2 style="margin-top:24px">LIVE SCREEN SHARING</h2><p class="mut">Select a display or window. Sharing is opt-in and can be stopped at any time.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" id="screenSources">Choose screen/window</button><button class="btn red" id="screenStop">Stop sharing</button><button class="btn" id="screenPause">Pause</button><button class="btn" id="screenShot">Capture screenshot</button></div><div id="screenChoices" style="display:flex;gap:8px;flex-wrap:wrap"></div><video id="screenPreview" autoplay muted playsinline style="width:100%;max-height:360px;display:none;border:1px solid #5a1519;border-radius:8px"></video><div id="screenState" class="mut">Not sharing.</div></div>
   <div class="view box pane" id="v-credentials"><h2>CREDENTIAL VAULT</h2><p class="mut">Saved secrets are encrypted with Windows DPAPI. Credentials are only released after exact HTTPS domain matching and a separate user confirmation. Passwords are never sent to AI.</p><div style="display:grid;gap:8px;max-width:560px;margin:12px 0"><input id="credSite" type="url" placeholder="https://example.com"><input id="credLabel" type="text" placeholder="Label (optional)"><input id="credUser" type="text" placeholder="Username"><input id="credPass" type="password" placeholder="Password"><button class="btn red" id="credSave">Save encrypted credential</button></div><div id="credList" style="display:grid;gap:8px"></div></div>
@@ -137,7 +149,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
 <div id="toast"></div><div id="screen-indicator" style="display:none;position:fixed;top:8px;right:12px;z-index:90;background:#5a0b10;border:1px solid #ff2a2a;border-radius:18px;padding:6px 12px;color:#fff;font:700 11px Orbitron;box-shadow:0 0 14px #ff2a2a">● SCREEN SHARING</div>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const NAV=[["home","⌂","Home"],["assistant","💬","Assistant"],["computer","▣","Computer"],["credentials","🔐","Credentials"],["tools","🛠","Tools"],["files","📁","Files"],["apps","▦","Apps"],["settings","⚙","Settings"]];
+const NAV=[["home","⌂","Home"],["gmail","✉","Gmail"],["assistant","💬","Assistant"],["computer","▣","Computer"],["credentials","🔐","Credentials"],["tools","🛠","Tools"],["files","📁","Files"],["apps","▦","Apps"],["settings","⚙","Settings"]];
 $("#nav").innerHTML=NAV.map(n=>`<button data-v="${n[0]}"><i>${n[1]}</i><span>${n[2]}</span></button>`).join("");
 function go(v){$$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));$$("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v))}
 $("#nav").onclick=e=>{const b=e.target.closest("button");b&&go(b.dataset.v)};go("home");
@@ -315,6 +327,38 @@ async function gs(){try{const g=await J('/api/google/status');$('#gst').textCont
 $('#gc').onclick=async()=>{try{const r=await J('/api/google/connect',{});window.open(r.url,'_blank')||(location.href=r.url)}catch(e){toast(e.message)}};
 $('#gd').onclick=()=>confirmBox('Disconnect Google and delete the stored token?',async()=>{try{await J('/api/google/disconnect',{});toast('Disconnected')}catch(e){toast(e.message)}gs()});
 gs();addEventListener('focus',gs);
+
+let gmailQuery='in:inbox',gmailNext=null,gmailPages=[],gmailSelected='';
+const gmailStatus=$('#gmailStatus'),gmailListEl=$('#gmailList'),gmailReader=$('#gmailReader');
+function gmailDate(v){const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString()}
+function gmailButton(label,fn){const b=document.createElement('button');b.className='btn';b.textContent=label;b.onclick=fn;return b}
+async function gmailLoad(query=gmailQuery,token=''){
+ gmailQuery=query;$('#gmailQuery').value=query;gmailStatus.textContent='Loading Gmail…';gmailListEl.innerHTML='';gmailReader.textContent='Select an email to read it here.';
+ try{
+  const u='/api/mail/list?q='+encodeURIComponent(query)+'&max=20'+(token?'&pageToken='+encodeURIComponent(token):'');
+  const r=await J(u);gmailNext=r.nextPageToken;$('#gmailCount').textContent=(r.resultSizeEstimate||r.messages.length)+' matching messages · showing '+r.messages.length;
+  gmailStatus.textContent='Connected · Read-only';gmailListEl.innerHTML=r.messages.map(m=>'<button class="box" data-gmail-id="'+esc(m.id)+'" style="text-align:left;padding:10px;cursor:pointer;border:1px solid '+(m.unread?'#a52a32':'#34252a')+';background:'+(m.unread?'#1b0d10':'#100c0e')+'"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(m.from||'Unknown sender')+'</b><span class="mut">'+esc(gmailDate(m.date))+'</span></div><div style="font-weight:'+(m.unread?'700':'400')+';margin:5px 0">'+esc(m.subject)+'</div><div class="mut">'+esc(m.snippet)+'</div></button>').join('')||'<div class="mut">No messages found. Try another search.</div>';
+  $('#gmailOlder').disabled=!gmailNext;$('#gmailNewer').disabled=!gmailPages.length;
+ }catch(e){gmailStatus.textContent=e.message;gmailListEl.innerHTML='<div class="mut">Could not load mail. Check Settings → Google Account and reconnect if needed.</div>'}
+}
+async function gmailOpen(id){
+ gmailSelected=id;gmailReader.textContent='Loading message…';
+ try{const m=await J('/api/mail/message?id='+encodeURIComponent(id));
+  gmailReader.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3>'+esc(m.subject)+'</h3><span class="mut">'+esc(gmailDate(m.date))+'</span></div><div class="mut" style="margin:8px 0">From: '+esc(m.from)+'<br>To: '+esc(m.to)+(m.cc?'<br>Cc: '+esc(m.cc):'')+'</div><hr style="border-color:#34252a;margin:10px 0"><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.55;color:inherit">'+esc(m.body||m.snippet||'(No readable message text)')+'</pre>';
+ }catch(e){gmailReader.textContent='Could not open this email: '+e.message}
+}
+$('#gmailSearch').onclick=()=>gmailLoad($('#gmailQuery').value.trim()||'in:inbox');
+$('#gmailQuery').addEventListener('keydown',e=>{if(e.key==='Enter')gmailLoad($('#gmailQuery').value.trim()||'in:inbox')});
+$('#gmailRefresh').onclick=()=>gmailLoad(gmailQuery);
+$('#v-gmail').addEventListener('click',e=>{
+ const f=e.target.closest('[data-gmail-q]');if(f){gmailPages=[];gmailLoad(f.dataset.gmailQ);return}
+ const m=e.target.closest('[data-gmail-id]');if(m)gmailOpen(m.dataset.gmailId);
+});
+$('#gmailOlder').onclick=()=>{if(gmailNext){gmailPages.push(gmailNext);gmailLoad(gmailQuery,gmailNext)}};
+$('#gmailNewer').onclick=()=>{gmailPages.pop();gmailLoad(gmailQuery,gmailPages.length?gmailPages[gmailPages.length-1]:'')};
+const _gmailGs=gs;gs=async()=>{await _gmailGs();try{const g=await J('/api/google/status');gmailStatus.textContent=!g.configured?'Not configured — add Google OAuth credentials in .env':g.connected?'Connected · Read-only':'Not connected — connect in Settings';}catch(e){gmailStatus.textContent=e.message}};
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-v="gmail"]');if(b){J('/api/google/status').then(g=>{if(g.connected)gmailLoad('in:inbox');else gmailStatus.textContent='Connect Gmail in Settings → Google Account first.'}).catch(x=>gmailStatus.textContent=x.message)}});
+
 const _r2=run;run=async function(text,mode){const q=text.trim().toLowerCase(),idle=()=>setSt(rec?'listening':'idle');
  if(q&&mode!=='analyze'&&!/^(launch|start|open|run)\b/.test(q)){
   const start=l=>{$('#resp').innerHTML='<b>You:</b> '+esc(text);logAct(l);setSt('thinking')};
