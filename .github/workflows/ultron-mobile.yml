@@ -1,0 +1,50 @@
+name: ULTRON Mobile CI
+
+on:
+  push:
+    branches: [feature/ultron-mobile]
+    paths:
+      - "mobile/**"
+      - "mobile_backend/**"
+      - "MOBILE_IMPLEMENTATION_PLAN.md"
+      - ".github/workflows/ultron-mobile.yml"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - "mobile_backend/**"
+      - "MOBILE_IMPLEMENTATION_PLAN.md"
+
+jobs:
+  flutter:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: android
+          - os: macos-latest
+            target: ios
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate native platform runners
+        run: flutter create --platforms=android,ios .
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build Android APK
+        if: matrix.target == 'android'
+        run: flutter build apk --debug
+      - name: Build iOS (unsigned)
+        if: matrix.target == 'ios'
+        run: flutter build ios --no-codesign
