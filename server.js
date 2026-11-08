@@ -89,7 +89,7 @@ async function gtoken(){if(!GOK)throw new Error('Google is not configured (add G
  const rt=refreshTok();if(!rt)throw new Error('Google is not connected: open Settings > Connect Gmail');if(acc.t&&Date.now()<acc.exp)return acc.t;
  const r=await fetch('https://oauth2.googleapis.com/token',form({client_id:GID,client_secret:GSEC,refresh_token:rt,grant_type:'refresh_token'}));const j=await r.json();
  if(!r.ok)throw new Error(j.error_description||j.error);acc={t:j.access_token,exp:Date.now()+(j.expires_in-60)*1000};return acc.t}
-function gconnect(){if(!GOK)throw new Error('Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env first');
+function gconnect(){if(!GOK)throw new Error('Gmail sign-in is not configured in this ULTRON build. The app maintainer must complete the one-time Google OAuth setup.');
  const v=crypto.randomBytes(32).toString('base64url'),st=crypto.randomBytes(16).toString('hex');pend={v,st,at:Date.now()};
  return 'https://accounts.google.com/o/oauth2/v2/auth?'+new URLSearchParams({client_id:GID,redirect_uri:REDIR,response_type:'code',scope:SCOPE,access_type:'offline',prompt:'consent',state:st,code_challenge:crypto.createHash('sha256').update(v).digest('base64url'),code_challenge_method:'S256'})}
 async function gcallback(u){const err=u.searchParams.get('error');if(err)throw new Error(err);
