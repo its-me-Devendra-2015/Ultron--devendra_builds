@@ -23,3 +23,16 @@ test('automation emergency stop blocks actions until explicitly resumed',async()
 test('automation refuses unknown applications',async()=>{
  await assert.rejects(()=>automation.execute({type:'launch',name:'powershell'}),/allowlist/);
 });
+
+const {chooseModel}=require('../model-selection');
+test('Ollama model selection recognizes Qwen, Kimi and common model families',()=>{
+ assert.equal(chooseModel(['qwen3:4b','gemma4:e2b']),'qwen3:4b');
+ assert.equal(chooseModel(['kimi-k2:latest','gemma3:4b']),'kimi-k2:latest');
+ assert.equal(chooseModel(['deepseek-r1:8b']),'deepseek-r1:8b');
+ assert.equal(chooseModel(['llama3.2:3b']),'llama3.2:3b');
+});
+test('Ollama model selection honors an installed explicit choice and excludes embedding models',()=>{
+ assert.equal(chooseModel(['qwen3:4b','kimi-k2:latest'],'kimi-k2:latest'),'kimi-k2:latest');
+ assert.equal(chooseModel(['nomic-embed-text:latest','custom-chat:latest']),'custom-chat:latest');
+ assert.equal(chooseModel([]),null);
+});
