@@ -103,6 +103,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
  </div>
  
   <div class="view box pane" id="v-gmail"><h2>GMAIL INBOX</h2>
+   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0"><span id="gmailLoginStatus" class="mut">Sign in to load your inbox.</span><button class="btn red" id="gmailLogin">Sign in with Google</button></div>
    <p class="mut">Read, search and inspect your Gmail. ULTRON has read-only access: it cannot send, delete, archive or change messages.</p>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><input id="gmailQuery" type="search" placeholder="Search Gmail: from:, subject:, has:attachment…" style="flex:1;min-width:220px"><button class="btn red" id="gmailSearch">Search</button><button class="btn" id="gmailRefresh">Refresh</button></div>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn" data-gmail-q="in:inbox">Inbox</button><button class="btn" data-gmail-q="is:unread in:inbox">Unread</button><button class="btn" data-gmail-q="is:starred">Starred</button><button class="btn" data-gmail-q="in:sent">Sent</button><button class="btn" data-gmail-q="has:attachment">Attachments</button><button class="btn" data-gmail-q="newer_than:7d">Last 7 days</button></div>
@@ -323,8 +324,10 @@ run=async function(text,mode){text=text.trim();const q=text.toLowerCase();
   const r=await J('/api/chat',{messages:msgs});msgs.push({role:'assistant',content:r.text});setSt(rec?'listening':'idle');say(r.text,text)}
  catch(e){msgs.pop();setSt(rec?'listening':'idle');say('Request failed: '+e.message,text)}};
 $('#v-settings').insertAdjacentHTML('beforeend','<h2 style="margin-top:22px">GOOGLE ACCOUNT</h2><div id="gst" class="mut"></div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn red" id="gc">Connect Gmail (read-only)</button><button class="btn" id="gd">Disconnect</button></div><p class="mut" style="margin-top:8px">Only read access to Gmail is requested. Google Photos and other services are never requested, so ULTRON cannot see them. Email text is sent to your AI provider when you ask for a summary.</p>');
-async function gs(){try{const g=await J('/api/google/status');$('#gst').textContent=H.offline?'Disabled in offline mode':!g.configured?'Not configured — add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env':g.connected?'Connected (Gmail read-only)':'Not connected'}catch{}}
-$('#gc').onclick=async()=>{try{const r=await J('/api/google/connect',{});window.open(r.url,'_blank')||(location.href=r.url)}catch(e){toast(e.message)}};
+async function gs(){try{const g=await J('/api/google/status');$('#gst').textContent=H.offline?'Disabled in offline mode':!g.configured?'Sign-in is not set up in this ULTRON build.':g.connected?'Connected (Gmail read-only)':'Not connected'}catch{}}
+async function startGoogleLogin(){try{const r=await J('/api/google/connect',{});window.open(r.url,'_blank')||(location.href=r.url)}catch(e){toast(e.message)}}
+$('#gc').onclick=startGoogleLogin;
+$('#gmailLogin').onclick=startGoogleLogin;
 $('#gd').onclick=()=>confirmBox('Disconnect Google and delete the stored token?',async()=>{try{await J('/api/google/disconnect',{});toast('Disconnected')}catch(e){toast(e.message)}gs()});
 gs();addEventListener('focus',gs);
 
