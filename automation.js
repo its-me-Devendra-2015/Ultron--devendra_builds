@@ -37,7 +37,8 @@ async function execute(action){
  if(type==='keys'||type==='type'){
   const value=String(action.value||'');if(value.length>2000||/[\0]/.test(value))throw new Error('Text/shortcut is too long or invalid');
   if(type==='keys'&&!/^[\w+^%~{}()[\]]{1,80}$/.test(value))throw new Error('Unsupported shortcut syntax');
-  await runPS("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('"+value.replace(/'/g,"''")+"')");
+  const sent=type==='type'?value.replace(/[+^%~(){}]/g,c=>({'+':'{+}','^':'{^}','%':'{%}','~':'{~}','(':'{(',')':'{)','{':'{{}','}':'{}}'}[c])):value;
+  await runPS("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('"+sent.replace(/'/g,"''")+"')");
   return {ok:true,action:type};
  }
  if(type==='click'){
