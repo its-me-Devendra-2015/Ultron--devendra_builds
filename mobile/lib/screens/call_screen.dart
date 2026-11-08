@@ -29,7 +29,7 @@ class _CallScreenState extends State<CallScreen> {
       await _room.connect(
         widget.session.serverUrl,
         widget.session.participantToken,
-        roomOptions: const RoomOptions(adaptiveStream: true, dynacast: true),
+        roomOptions: RoomOptions(adaptiveStream: true, dynacast: true),
       );
       await _room.localParticipant?.setMicrophoneEnabled(true);
       if (!mounted) return;
