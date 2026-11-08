@@ -34,7 +34,8 @@
       "package.json",
       "preload.js",
       "automation.js",
-      "credentials.js"
+      "credentials.js",
+      "model-selection.js"
     ],
     "win": {
       "target": [
