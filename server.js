@@ -2,6 +2,7 @@
 const crypto=require('crypto'),http=require('http'),fs=require('fs'),os=require('os'),path=require('path'),{spawn,execFile}=require('child_process');
 const automation=require('./automation');
 const credentials=require('./credentials');
+const {chooseModel}=require('./model-selection');
 const D=__dirname,ROOT=process.env.ULTRON_HOME||(process.pkg?path.dirname(process.execPath):__dirname),W=process.platform==='win32';
 for(const[src,dst]of[['.env.example','.env'],['apps.json','apps.json']]){try{if(!fs.existsSync(path.join(ROOT,dst)))fs.writeFileSync(path.join(ROOT,dst),fs.readFileSync(path.join(D,src)))}catch{}}
 try{fs.readFileSync(path.join(ROOT,'.env'),'utf8').split(/\r?\n/).forEach(l=>{const m=l.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^["']|["']$/g,'')})}catch{}
@@ -115,8 +116,7 @@ async function ollamaTags(){try{const r=await fetch(OLL+'/api/tags',{signal:Abor
 async function ping(){const models=await ollamaTags();return models?models.map(m=>m.name):null}
 let picked=false;async function pickModel(){if(picked)return;const models=(await ollamaTags())||[],names=models.map(m=>m.name);if(!names.length)return;picked=true;
  if(E.OLLAMA_MODEL&&names.includes(E.OLLAMA_MODEL)){OMODEL=E.OLLAMA_MODEL;return}
- const preferred=[/^qwen3(?:\\.|:)/i,/^qwen/i,/^kimi/i,/^deepseek/i,/^llama/i,/^mistral/i,/^gemma/i,/^phi/i,/^command-r/i];
- OMODEL=preferred.map(p=>names.find(n=>p.test(n))).find(Boolean)||names[0];if(!E.OLLAMA_VISION_MODEL)OVMODEL=OMODEL}
+ OMODEL=chooseModel(names,E.OLLAMA_MODEL)||OMODEL;if(!E.OLLAMA_VISION_MODEL)OVMODEL=OMODEL}
 async function chooseOllamaModel(name){const models=await ollamaTags();if(!models)throw new Error('Cannot connect to Ollama at '+OLL);if(!models.some(m=>m.name===name))throw new Error('That exact model is not installed. Pull it first with: ollama pull '+name);OMODEL=name;E.OLLAMA_MODEL=name;picked=true;if(!E.OLLAMA_VISION_MODEL)OVMODEL=name;cfgSave({OLLAMA_MODEL:name});return{name,visionModel:OVMODEL}}
 async function oll(model,messages){let r;try{r=await fetch(OLL+'/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({model,stream:false,keep_alive:'24h',options:{num_predict:400,temperature:0.5},messages})})}
  catch{throw new Error('Cannot reach Ollama at '+OLL+'. Start Ollama, then run: ollama pull '+model)}
