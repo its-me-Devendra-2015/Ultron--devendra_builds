@@ -1,5 +1,7 @@
 // ULTRON local backend — Node 18+, zero dependencies. Binds to localhost only.
 const crypto=require('crypto'),http=require('http'),fs=require('fs'),os=require('os'),path=require('path'),{spawn,execFile}=require('child_process');
+const automation=require('./automation');
+const credentials=require('./credentials');
 const D=__dirname,ROOT=process.env.ULTRON_HOME||(process.pkg?path.dirname(process.execPath):__dirname),W=process.platform==='win32';
 for(const[src,dst]of[['.env.example','.env'],['apps.json','apps.json']]){try{if(!fs.existsSync(path.join(ROOT,dst)))fs.writeFileSync(path.join(ROOT,dst),fs.readFileSync(path.join(D,src)))}catch{}}
 try{fs.readFileSync(path.join(ROOT,'.env'),'utf8').split(/\r?\n/).forEach(l=>{const m=l.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^["']|["']$/g,'')})}catch{}
@@ -187,6 +189,14 @@ http.createServer(async(req,res)=>{
   if(u.pathname.startsWith('/api/')){
    if(req.method==='POST'&&req.headers['x-ultron']!=='1')return send(res,403,{error:'forbidden'});
    let body={};if(req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>9e6)throw new Error('Request too large')}body=JSON.parse(s||'{}')}
+   if(u.pathname==='/api/automation/windows'){if(req.method!=='GET')return send(res,405,{error:'GET only'});return send(res,200,{windows:await automation.windows(),stopped:automation.isStopped()})}
+   if(u.pathname==='/api/automation/controls'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,{controls:await automation.controls(body.title)})}
+   if(u.pathname==='/api/automation/action'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await automation.execute(body.action))}
+   if(u.pathname==='/api/automation/stop'){automation.stop();return send(res,200,{ok:true,stopped:true})}
+   if(u.pathname==='/api/automation/resume'){automation.resume();return send(res,200,{ok:true,stopped:false})}
+   if(u.pathname==='/api/credentials'){if(req.method==='GET')return send(res,200,{entries:credentials.list()});if(req.method==='POST')return send(res,200,await credentials.save(body));return send(res,405,{error:'GET/POST only'})}
+   if(u.pathname==='/api/credentials/delete'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,credentials.remove(body.id))}
+   if(u.pathname==='/api/credentials/reveal'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await credentials.reveal({id:body.id,origin:body.origin}))}
    if(u.pathname==='/api/mode'){if(req.method!=='POST')return send(res,405,{error:'POST only'});if(!['auto','online','offline'].includes(body.mode))throw new Error('mode must be auto, online or offline');
     if(body.mode==='online'&&PROV==='ollama'&&!OFFLINE)throw new Error('Online mode needs a cloud AI key. Add your Gemini key in Settings > Setup, then restart ULTRON.');
     MODE=body.mode;onl={t:0,v:true};cloudDown=0;try{cfgSave({MODE})}catch{}return send(res,200,{mode:MODE})}
