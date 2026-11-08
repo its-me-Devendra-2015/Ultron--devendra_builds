@@ -27,6 +27,7 @@ The GitHub connector exposed individual file reads but not a recursive repositor
 - [x] Updated Electron packaging file list for the preload and new modules.
 - [x] Added provider-neutral Ollama model discovery and a Settings picker for installed Qwen, Kimi, DeepSeek, Llama, Mistral, Gemma, Phi and other chat models.
 - [x] Added explicit model selection with installed-model validation and regression tests for Qwen/Kimi family detection.
+- [x] Expanded Gmail from a one-shot unread summary into a dedicated read-only inbox: Gmail search queries, Inbox/Unread/Starred/Sent/Attachments/last-7-days filters, 20-message pages, sender/subject/date/snippets, and a full message reader with plain-text extraction. Existing OAuth `gmail.readonly` scope is preserved; no send/delete/archive/mark-read permissions were added.
 
 ## Known incomplete requirements
 - [ ] Website login-page recognition and automatic form autofill are not implemented. The vault currently supports secure storage, exact-domain-gated reveal and clipboard copy; it does not inject credentials into arbitrary websites.
