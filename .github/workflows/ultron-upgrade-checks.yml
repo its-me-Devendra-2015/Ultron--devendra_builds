@@ -1,0 +1,25 @@
+name: ULTRON upgrade checks
+on:
+  push:
+    branches: [upgrade/1.3.3-advanced-desktop]
+  pull_request:
+    branches: [main]
+jobs:
+  node-checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax checks
+        run: |
+          node --check main.js
+          node --check server.js
+          node --check preload.js
+          node --check automation.js
+          node --check credentials.js
+      - name: Renderer syntax check
+        run: node scripts/check-inline.js
+      - name: Security regression tests
+        run: npm test

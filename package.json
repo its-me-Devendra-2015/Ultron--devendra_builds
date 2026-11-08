@@ -8,15 +8,47 @@
   "scripts": {
     "start": "electron .",
     "build": "pkg app.js --targets node22-win-x64 --output dist/ULTRON.exe",
-    "installer": "electron-builder --win nsis --x64"
+    "installer": "electron-builder --win nsis --x64",
+    "test": "node --test"
   },
-  "pkg": { "assets": ["index.html", "apps.json", ".env.example"] },
+  "pkg": {
+    "assets": [
+      "index.html",
+      "apps.json",
+      ".env.example"
+    ]
+  },
   "build": {
     "appId": "com.ultron.assistant",
     "productName": "ULTRON",
-    "directories": { "output": "dist-installer" },
-    "files": ["main.js", "server.js", "index.html", "apps.json", ".env.example", "build/icon.png", "package.json"],
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png", "signAndEditExecutable": false },
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "main.js",
+      "server.js",
+      "index.html",
+      "apps.json",
+      ".env.example",
+      "build/icon.png",
+      "package.json",
+      "preload.js",
+      "automation.js",
+      "credentials.js",
+      "model-selection.js"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    },
     "nsis": {
       "script": "installer/ULTRON.nsi",
       "oneClick": false,
