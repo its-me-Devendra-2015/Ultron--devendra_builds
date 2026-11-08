@@ -190,7 +190,6 @@ http.createServer(async(req,res)=>{
   if(u.pathname.startsWith('/api/')){
    if(req.method==='POST'&&req.headers['x-ultron']!=='1')return send(res,403,{error:'forbidden'});
    let body={};if(req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>9e6)throw new Error('Request too large')}body=JSON.parse(s||'{}')}
-   if(u.pathname==='/api/automation/controls'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,{controls:await automation.controls(body.title)})}
    if(u.pathname==='/api/automation/windows'){if(req.method!=='GET')return send(res,405,{error:'GET only'});return send(res,200,{windows:await automation.windows(),stopped:automation.isStopped()})}
    if(u.pathname==='/api/automation/controls'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,{controls:await automation.controls(body.title)})}
    if(u.pathname==='/api/automation/action'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await automation.execute(body.action))}
