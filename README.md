@@ -421,3 +421,23 @@ Check the repository for a `LICENSE` file before redistributing or using this pr
   <em>Your Personal AI Command Center</em><br><br>
   Cloud Intelligence. Local AI. One Unified Experience.
 </p>
+
+
+## 🌍 Multilingual voice conversations (English interface)
+
+The interface labels and navigation are in English. Conversation language is separate: ULTRON is instructed to answer in the language used in the latest user message, without translating to English unless asked.
+
+### Voice input
+
+- The Settings page includes an **Auto-detect spoken language** option plus common language choices.
+- With Gemini audio transcription configured, automatic mode asks Gemini to identify the spoken language and preserve its original script.
+- With whisper.cpp configured, automatic mode uses Whisper's language detection; selecting a language passes that language to Whisper.
+- The microphone uses recorded audio for the multilingual transcription path. Wake-phrase listening is not available in this recorded-audio mode.
+
+### Spoken responses
+
+- Fish Audio and ElevenLabs voices are used when configured. Choose a voice that supports the languages you want to speak.
+- The default ElevenLabs model is multilingual-capable; Fish Audio model/voice language coverage depends on the configured voice and service.
+- If cloud speech is unavailable in offline mode, the browser's installed speech voices are used when available. Browser language selection is best-effort and depends on voices installed on Windows.
+
+**Language coverage is provider-dependent.** Recognition and pronunciation depend on the selected transcription model, speech provider, voice, and installed system voices. Test each target language on your device.
