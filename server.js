@@ -15,7 +15,7 @@ const PROV=OFFLINE?'ollama':(E.AI_PROVIDER||'').toLowerCase()||(GKEY?'gemini':KE
 const AUTO=!/^(0|false|no)$/i.test(E.AUTO_FALLBACK||'');let MODE=['online','offline'].includes((E.MODE||'').toLowerCase())?E.MODE.toLowerCase():'auto';
 const _fetch=globalThis.fetch;globalThis.fetch=(u,o)=>{if(OFFLINE&&!['localhost','127.0.0.1','::1','[::1]'].includes(new URL(String(u)).hostname))return Promise.reject(new Error('Blocked: offline mode'));return _fetch(u,o)};
 const HONEST='You cannot run actions yourself; the user runs them via the EXECUTE button. Never claim to have done something you did not.';
-const systemPrompt=()=>'You are ULTRON, a concise, capable desktop AI assistant. If asked who your creator is, reply exactly: "My Creator is Devendra, a great Developer, philosophist who created me". '+HONEST;
+const systemPrompt=()=>'You are ULTRON, a concise, capable desktop AI assistant. Reply in the same language and writing system as the user’s latest message. Understand and answer multilingual requests naturally, including Indian languages; do not translate to English unless asked. The application interface is English, but that does not restrict the conversation or spoken response language. If asked who your creator is, reply exactly: "My Creator is Devendra, a great Developer, philosophist who created me". '+HONEST;
 const sh=(c,a,t=6000)=>new Promise(r=>execFile(c,a,{timeout:t,windowsHide:true},(e,o)=>r(e?null:String(o).trim())));
 const cache={};const memo=async(k,ms,f)=>{const c=cache[k];if(c&&Date.now()-c.t<ms)return c.v;const v=await f();cache[k]={t:Date.now(),v};return v};
 let cpu=0,prev=os.cpus();
@@ -123,12 +123,12 @@ async function vision(image,prompt){const m=String(image).match(/^data:image\/jp
  if(PROV==='anthropic'){const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':KEY,'anthropic-version':'2023-06-01'},body:JSON.stringify({model:MODEL,max_tokens:800,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b}},{type:'text',text:P}]}]})});
   const j=await r.json();if(!r.ok)throw new Error(j.error?.message||'HTTP '+r.status);return j.content.filter(x=>x.type==='text').map(x=>x.text).join('')}
  throw new Error('No AI provider configured for vision')}
-async function stt(b64){const WC=E.WHISPER_CMD,WM=E.WHISPER_MODEL;if(typeof b64!=='string'||b64.length>6e6)throw new Error('Bad audio');
+async function stt(b64,language='auto'){const WC=E.WHISPER_CMD,WM=E.WHISPER_MODEL;const allowed=['auto','en','hi','te','ta','kn','ml','bn','mr','gu','pa','ur','ar','es','fr','de','pt','ru','ja','ko','zh','th','id','vi','tr','it','nl','pl'];language=String(language||'auto').toLowerCase();if(!allowed.includes(language))throw new Error('Unsupported voice language selection');if(typeof b64!=='string'||b64.length>6e6)throw new Error('Bad audio');
  if(!WC||!WM){if(!GKEY||OFFLINE)throw new Error('Set GEMINI_API_KEY, or WHISPER_CMD and WHISPER_MODEL, in .env');
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GMODEL)}:generateContent`,{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':GKEY},
-   body:JSON.stringify({contents:[{role:'user',parts:[{inline_data:{mime_type:'audio/wav',data:b64}},{text:'Transcribe this audio. Output only the spoken words, or nothing if it is silent.'}]}]})});
+   body:JSON.stringify({contents:[{role:'user',parts:[{inline_data:{mime_type:'audio/wav',data:b64}},{text:language==='auto'?'Detect the spoken language automatically. Transcribe faithfully in the original language and writing system. Output only the spoken words, or nothing if silent.':'Transcribe this audio in '+({"en":"English","hi":"Hindi","te":"Telugu","ta":"Tamil","kn":"Kannada","ml":"Malayalam","bn":"Bengali","mr":"Marathi","gu":"Gujarati","pa":"Punjabi","ur":"Urdu","ar":"Arabic","es":"Spanish","fr":"French","de":"German","pt":"Portuguese","ru":"Russian","ja":"Japanese","ko":"Korean","zh":"Chinese","th":"Thai","id":"Indonesian","vi":"Vietnamese","tr":"Turkish","it":"Italian","nl":"Dutch","pl":"Polish"}[language]||language)+'. Preserve the original words and writing system. Output only the transcription.'}]}]})});
   const j=await r.json();if(!r.ok)throw new Error(j.error?.message||'Gemini HTTP '+r.status);return(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim()}const f=path.join(os.tmpdir(),'ultron-'+crypto.randomBytes(6).toString('hex')+'.wav');fs.writeFileSync(f,Buffer.from(b64,'base64'));
- try{return(await new Promise((res,rej)=>execFile(WC,['-m',WM,'-f',f,'-nt','-np'],{timeout:60000,windowsHide:true},(e,o)=>e?rej(new Error('whisper failed: '+e.message.slice(0,120))):res(String(o))))).trim()}finally{try{fs.unlinkSync(f)}catch{}}}
+ try{const args=['-m',WM,'-f',f,'-nt','-np'];if(language!=='auto')args.push('-l',language);return(await new Promise((res,rej)=>execFile(WC,args,{timeout:60000,windowsHide:true},(e,o)=>e?rej(new Error('whisper failed: '+e.message.slice(0,120))):res(String(o))))).trim()}finally{try{fs.unlinkSync(f)}catch{}}}
 
 // ---- v2: saved chat history, setup (.env editor) ----
 const HF=path.join(ROOT,'chat-history.jsonl');
@@ -216,7 +216,7 @@ http.createServer(async(req,res)=>{
    if(u.pathname==='/api/mail/summary')return send(res,200,{text:await mailSummary()});
    if(u.pathname==='/api/research')return send(res,200,await research(body.topic));
    if(u.pathname==='/api/vision')return send(res,200,{text:await vision(body.image,body.prompt)});
-   if(u.pathname==='/api/stt')return send(res,200,{text:await stt(body.wav)});
+   if(u.pathname==='/api/stt')return send(res,200,{text:await stt(body.wav,body.language||'auto')});
    if(u.pathname==='/api/restart'){if(req.method!=='POST')return send(res,405,{error:'POST only'});if(!process.listenerCount('ultron-restart'))return send(res,200,{ok:false,manual:true});send(res,200,{ok:true});setTimeout(()=>process.emit('ultron-restart'),400);return}
    if(u.pathname==='/api/tts'){const a=await tts(body.text);res.writeHead(200,{'content-type':'audio/mpeg'});return res.end(a)}
    if(u.pathname==='/api/chat'){const m=(body.messages||[]).slice(-12).map(x=>({role:x.role==='assistant'?'assistant':'user',content:String(x.content).slice(0,8000)}));const text=await chat(m);saveHist(m,text);return send(res,200,{text,brain})}
