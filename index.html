@@ -117,6 +117,7 @@ label{display:flex;align-items:center;gap:8px;margin:10px 0}
   <label><input type="checkbox" id="wakeOn"> Enable wake phrase (needs microphone + speech recognition)</label>
   <label><input type="checkbox" id="clap"> Enable clap detection (needs microphone)</label>
   <label><input type="checkbox" id="tts" checked> Speak responses</label>
+  <label>Voice language <select id="voiceLang" style="background:#140a0c;color:inherit;border:1px solid #4a1519;padding:6px;border-radius:4px"><option value="auto">Auto-detect spoken language</option><option value="en">English</option><option value="hi">Hindi</option><option value="te">Telugu</option><option value="ta">Tamil</option><option value="kn">Kannada</option><option value="ml">Malayalam</option><option value="bn">Bengali</option><option value="mr">Marathi</option><option value="gu">Gujarati</option><option value="pa">Punjabi</option><option value="ur">Urdu</option><option value="ar">Arabic</option><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option><option value="pt">Portuguese</option><option value="ru">Russian</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="zh">Chinese</option><option value="th">Thai</option><option value="id">Indonesian</option><option value="vi">Vietnamese</option><option value="tr">Turkish</option><option value="it">Italian</option><option value="nl">Dutch</option><option value="pl">Polish</option></select></label><p class="mut">Auto-detect uses Gemini or multilingual Whisper when configured. The interface remains English; ULTRON replies in your spoken language.</p>
   <div class="mut" id="caps"></div></div>
  <div id="resp"></div>
  <div id="bar"><div id="wave" class="idle"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
@@ -178,7 +179,9 @@ function drawApps(){$("#al").innerHTML=apps.map(a=>`<a class="btn" target="_blan
 $("#aadd").onclick=()=>{const n=$("#an").value.trim(),u=$("#au").value.trim();if(!n||!/^https?:\/\//.test(u))return toast("Enter a name and an http(s) URL");apps.push({n,u});store.set("ultron.apps",apps);drawApps();$("#an").value=$("#au").value=""};
 // speech out
 const setSt=(s,l)=>{const e=$("#st");e.className=s;e.textContent=l||s.toUpperCase()};
-function speak(t){if(!$("#tts").checked||!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);u.onstart=()=>setSt("speaking");u.onend=()=>setSt(rec?"listening":"idle");speechSynthesis.cancel();speechSynthesis.speak(u)}
+function speechLang(text){const selected=$('#voiceLang')?.value||'auto';const codes={en:'en-US',hi:'hi-IN',te:'te-IN',ta:'ta-IN',kn:'kn-IN',ml:'ml-IN',bn:'bn-IN',mr:'mr-IN',gu:'gu-IN',pa:'pa-IN',ur:'ur-PK',ar:'ar-SA',es:'es-ES',fr:'fr-FR',de:'de-DE',pt:'pt-PT',ru:'ru-RU',ja:'ja-JP',ko:'ko-KR',zh:'zh-CN',th:'th-TH',id:'id-ID',vi:'vi-VN',tr:'tr-TR',it:'it-IT',nl:'nl-NL',pl:'pl-PL'};if(selected!=='auto')return codes[selected]||'en-US';const s=String(text);const tests=[[/[\u0900-\u097F]/,'hi-IN'],[/[\u0C00-\u0C7F]/,'te-IN'],[/[\u0B80-\u0BFF]/,'ta-IN'],[/[\u0C80-\u0CFF]/,'kn-IN'],[/[\u0D00-\u0D7F]/,'ml-IN'],[/[\u0980-\u09FF]/,'bn-IN'],[/[\u0600-\u06FF]/,'ar-SA'],[/[\u3040-\u30FF]/,'ja-JP'],[/[\u4E00-\u9FFF]/,'zh-CN'],[/[\uAC00-\uD7AF]/,'ko-KR'],[/[\u0400-\u04FF]/,'ru-RU'],[/[\u0E00-\u0E7F]/,'th-TH']];return (tests.find(([re])=>re.test(s))||[])[1]||'en-US'}
+function configureBrowserVoice(u,text){u.lang=speechLang(text);const voices=window.speechSynthesis?.getVoices?.()||[];u.voice=voices.find(v=>v.lang.toLowerCase()===u.lang.toLowerCase())||voices.find(v=>v.lang.toLowerCase().startsWith(u.lang.slice(0,2).toLowerCase()))||null;}
+function speak(t){if(!$("#tts").checked||!window.speechSynthesis)return;const u=new SpeechSynthesisUtterance(t);configureBrowserVoice(u,t);u.onstart=()=>setSt("speaking");u.onend=()=>setSt(rec?"listening":"idle");speechSynthesis.cancel();speechSynthesis.speak(u)}
 function say(t,user){const l=$("#log");if(user)l.insertAdjacentHTML("beforeend",`<div class="m u">${esc(user)}</div>`);l.insertAdjacentHTML("beforeend",`<div class="m">${esc(t)}</div>`);l.scrollTop=l.scrollHeight;$("#resp").innerHTML="<b>ULTRON:</b> "+esc(t);speak(t)}
 // command engine (local intents only; no backend connected)
 function run(text,mode){text=text.trim();if(!text&&mode!=="assist")return;
@@ -292,11 +295,11 @@ async function recDone(){ms.getTracks().forEach(t=>t.stop());$('#mic').classList
   wr(0,'RIFF');dv.setUint32(4,36+d.length*2,true);wr(8,'WAVEfmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,16000,true);dv.setUint32(28,32000,true);dv.setUint16(32,2,true);dv.setUint16(34,16,true);wr(36,'data');dv.setUint32(40,d.length*2,true);
   d.forEach((x,i)=>dv.setInt16(44+i*2,Math.max(-1,Math.min(1,x))*32767,true));
   const u8=new Uint8Array(dv.buffer);let bin='';for(let i=0;i<u8.length;i+=8192)bin+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));
-  const r=await J('/api/stt',{wav:btoa(bin)});setSt('idle');if(!r.text)return toast('Heard nothing');run(r.text)}
+  const r=await J('/api/stt',{wav:btoa(bin),language:$('#voiceLang')?.value||'auto'});setSt('idle');if(!r.text)return toast('Heard nothing');run(r.text)}
  catch(e){setSt('idle');say('Voice input failed: '+e.message)}}
-if(H.offline||/Electron/.test(navigator.userAgent)){$('#wakeOn').disabled=true;
- if(H.stt){startRec=()=>recStart();$('#mic').onclick=()=>mr&&mr.state==='recording'?mr.stop():recStart()}
- else{const m=()=>toast('Voice input needs a Gemini key or whisper.cpp (see .env.example). Typing works.');startRec=m;$('#mic').onclick=m}}
+$('#wakeOn').disabled=true;
+if(H.stt){startRec=()=>recStart();$('#mic').onclick=()=>mr&&mr.state==='recording'?mr.stop():recStart();$('#caps').textContent='Multilingual voice input: automatic language detection or choose a language above. Wake phrase is unavailable in recorded-audio mode.'}
+else{const m=()=>toast('Voice input needs a Gemini key or whisper.cpp (see .env.example). Typing works.');startRec=m;$('#mic').onclick=m}
 let cur;speak=function(t){if(!$('#tts').checked)return;
  cur&&cur.pause();setSt('speaking');
  fetch('/api/tts',{method:'POST',headers:{'content-type':'application/json','x-ultron':'1'},body:JSON.stringify({text:t})}).then(async r=>{if(!r.ok){let e={};try{e=await r.json()}catch{}throw new Error(e.error||'Voice service failed ('+r.status+')')}return r.blob()}).then(b=>{cur=new Audio(URL.createObjectURL(b));cur.onended=()=>setSt(rec?'listening':'idle');return cur.play()}).catch(e=>{setSt(rec?'listening':'idle');if(/Offline: using the browser voice/.test(e.message)&&window.speechSynthesis){const u=new SpeechSynthesisUtterance(t);u.onstart=()=>setSt('speaking');u.onend=()=>setSt(rec?'listening':'idle');speechSynthesis.cancel();speechSynthesis.speak(u)}else toast(e.message)})};
