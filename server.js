@@ -274,7 +274,7 @@ http.createServer(async(req,res)=>{
    if(u.pathname==='/api/stt')return send(res,200,{text:await stt(body.wav)});
    if(u.pathname==='/api/restart'){if(req.method!=='POST')return send(res,405,{error:'POST only'});if(!process.listenerCount('ultron-restart'))return send(res,200,{ok:false,manual:true});send(res,200,{ok:true});setTimeout(()=>process.emit('ultron-restart'),400);return}
    if(u.pathname==='/api/tts'){const a=await tts(body.text);res.writeHead(200,{'content-type':'audio/mpeg'});return res.end(a)}
-   if(u.pathname==='/api/chat'){const m=(body.messages||[]).slice(-12).map(x=>({role:x.role==='assistant'?'assistant':'user',content:String(x.content).slice(0,8000)}));const text=await chat(m);saveHist(m,text);if(sessionSync.paired){for(const item of m){await sessionSync.append(item.role==='assistant'?'message.assistant':'message.user','desktop',{text:item.content}).catch(e=>console.warn('Session sync:',e.message))}await sessionSync.append('message.assistant','desktop',{text}).catch(e=>console.warn('Session sync:',e.message))}return send(res,200,{text,brain})}
+   if(u.pathname==='/api/chat'){const m=(body.messages||[]).slice(-12).map(x=>({role:x.role==='assistant'?'assistant':'user',content:String(x.content).slice(0,8000)}));const text=await chat(m);saveHist(m,text);if(sessionSync.paired){const latestUser=[...m].reverse().find(item=>item.role==='user');if(latestUser)await sessionSync.append('message.user','desktop',{text:latestUser.content}).catch(e=>console.warn('Session sync:',e.message));await sessionSync.append('message.assistant','desktop',{text}).catch(e=>console.warn('Session sync:',e.message))}return send(res,200,{text,brain})}
   }
   send(res,404,{error:'not found'});
  }catch(e){send(res,500,{error:e.message})}
