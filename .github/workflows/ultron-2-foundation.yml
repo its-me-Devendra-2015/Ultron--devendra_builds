@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: 22
       - name: Run protocol tests
-        run: node --test test/protocol.test.js
+        run: node --test test/protocol.test.js test/session-client.test.js
