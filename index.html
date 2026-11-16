@@ -429,7 +429,15 @@ refreshFeeds();setInterval(refreshFeeds,600000);
 // saved conversation
 (async()=>{try{const h=(await J('/api/history')).messages;if(!h.length)return;const l=$('#log');h.forEach(m=>{msgs.push(m);l.insertAdjacentHTML('beforeend',`<div class="m${m.role==='user'?' u':''}">${m.role==='user'?esc(m.content):renderMarkdown(m.content)}</div>`)});l.scrollTop=l.scrollHeight}catch{}})();
 
-// settings: brain mode + setup
+// ULTRON 2.0: secure mobile-to-desktop pairing
+$('#v-settings').insertAdjacentHTML('beforeend',`<h2 style="margin-top:22px">ULTRON 2.0 DEVICE LINK</h2>
+<p class="mut">Set ULTRON_SESSION_API_URL in this PC's .env file, restart ULTRON, then generate a one-time code in ULTRON Mobile and enter it below.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;max-width:560px"><input id="sessionPairCode" maxlength="12" autocomplete="off" placeholder="One-time mobile pairing code"><button class="btn red" id="sessionPairButton">PAIR MOBILE</button></div>
+<div id="sessionPairStatus" class="mut" style="margin-top:8px">Checking device link…</div>`);
+async function refreshSessionLink(){try{const s=await J('/api/session/status');$('#sessionPairStatus').textContent=s.paired?'Paired · session '+s.sessionId:'Not paired';}catch(e){$('#sessionPairStatus').textContent=e.message}}
+$('#sessionPairButton').onclick=async()=>{const code=$('#sessionPairCode').value.trim();if(!code){toast('Enter the one-time code shown on ULTRON Mobile.');return}try{const s=await J('/api/session/pair',{code});$('#sessionPairCode').value='';$('#sessionPairStatus').textContent='Paired · session '+s.sessionId;toast('ULTRON Desktop paired securely.')}catch(e){toast(e.message)}};
+refreshSessionLink();
+\n// settings: brain mode + setup
 $('#v-settings').insertAdjacentHTML('beforeend',`<h2 style="margin-top:22px">BRAIN</h2><div id="bst" class="mut"></div>
 <label>Mode <select id="modeSel" style="background:#140a0c;color:inherit;border:1px solid #4a1519;padding:6px;border-radius:4px"><option value="auto">Auto: cloud when online, local when offline</option><option value="online">Cloud only</option><option value="offline">Local only (no internet used)</option></select></label>
 <h2 style="margin-top:22px">SETUP</h2><p class="mut">Saved to the private .env file on this PC. Saved keys are never shown again; leave a field empty to keep what is saved.</p>
