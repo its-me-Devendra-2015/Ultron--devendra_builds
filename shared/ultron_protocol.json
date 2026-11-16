@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ULTRON Cross-Platform Event Envelope",
+  "description": "Versioned event contract shared by ULTRON desktop, mobile, backend, and agent clients.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "event_id", "session_id", "event_type", "occurred_at", "source", "payload"],
+  "properties": {
+    "protocol_version": { "const": "1.0" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "session.started", "session.ended",
+        "message.user", "message.assistant",
+        "assistant.state",
+        "tool.started", "tool.completed", "tool.failed",
+        "audio.state", "system.status", "error"
+      ]
+    },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "enum": ["desktop", "mobile", "backend", "agent"] },
+    "payload": { "type": "object" }
+  }
+}
