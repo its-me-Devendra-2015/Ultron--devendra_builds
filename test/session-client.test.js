@@ -73,6 +73,46 @@ test('desktop event sync sends the device bearer token and canonical envelope', 
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+
+test('desktop clears its local device credential after backend revocation', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ultron-session-'));
+  const tokenPath = path.join(dir, '.device.json');
+  const sessionId = '33333333-3333-4333-8333-333333333333';
+  const fakeFetch = async (url) => {
+    if (url.endsWith('/api/devices/pair')) {
+      return {
+        ok: true,
+        json: async () => ({
+          device_token: 'udv_revoked-secret',
+          device_id: 'device-3',
+          owner_uid: 'user-3',
+          session_id: sessionId,
+        }),
+      };
+    }
+    return {
+      ok: false,
+      status: 401,
+      json: async () => ({ detail: 'Device credential has been revoked' }),
+    };
+  };
+  const client = new SessionSyncClient({
+    baseUrl: 'https://example.invalid',
+    tokenPath,
+    fetch: fakeFetch,
+  });
+
+  await client.pair('PAIR1234');
+  assert.equal(client.paired, true);
+  await assert.rejects(
+    client.append('message.user', 'desktop', { text: 'after revocation' }),
+    /revoked/,
+  );
+  assert.equal(client.paired, false);
+  assert.equal(fs.existsSync(tokenPath), false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('desktop event sync is skipped when the device is not paired', async () => {
   const client = new SessionSyncClient({
     baseUrl: 'https://example.invalid',

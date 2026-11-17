@@ -55,7 +55,11 @@ class SessionSyncClient {
       },
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || data.error || 'Session service HTTP ' + response.status);
+    if (!response.ok) {
+      const error = new Error(data.detail || data.error || 'Session service HTTP ' + response.status);
+      error.status = response.status;
+      throw error;
+    }
     return data;
   }
 
@@ -75,6 +79,9 @@ class SessionSyncClient {
     };
     fs.mkdirSync(path.dirname(this.tokenPath), { recursive: true });
     fs.writeFileSync(this.tokenPath, JSON.stringify(state), { mode: 0o600 });
+    if (process.platform !== 'win32') {
+      try { fs.chmodSync(this.tokenPath, 0o600); } catch {}
+    }
     this.state = state;
     return { paired: true, sessionId: state.sessionId, ownerUid: state.ownerUid };
   }
@@ -88,10 +95,27 @@ class SessionSyncClient {
       payload: payload || {},
       requestId,
     });
-    return this.request('/api/sessions/' + encodeURIComponent(this.state.sessionId) + '/events', {
-      method: 'POST',
-      body: JSON.stringify(event),
-    }, this.state.deviceToken);
+    try {
+      return await this.request('/api/sessions/' + encodeURIComponent(this.state.sessionId) + '/events', {
+        method: 'POST',
+        body: JSON.stringify(event),
+      }, this.state.deviceToken);
+    } catch (error) {
+      // A server-side revocation takes effect immediately. Remove the stale
+      // local copy so the desktop does not keep retrying an invalid credential.
+      if (error && error.status === 401) this.unpair();
+      throw error;
+    }
+  }
+
+  unpair() {
+    try {
+      fs.unlinkSync(this.tokenPath);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    this.state = null;
+    return { paired: false };
   }
 
   status() {

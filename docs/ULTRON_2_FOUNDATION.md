@@ -27,6 +27,8 @@ Assistant states: `idle`, `listening`, `thinking`, `speaking`, `acting`, `offlin
 - A client event is data, not authorization. The backend must independently authorize every privileged operation.
 - New event types require a protocol versioning decision and tests on both clients.
 - The contract is transport-neutral: it can be carried over HTTPS, WebSocket, or LiveKit data messages.
+- The desktop stores only its narrow, revocable device credential locally; on POSIX systems the file is restricted to owner read/write permissions.
+- Revoke paired desktops from ULTRON Mobile → **MANAGE DEVICES**. The desktop clears its stale local credential automatically after the backend rejects the next sync request with HTTP 401.
 
 ## Verification
 
