@@ -3,11 +3,11 @@ const crypto=require('crypto'),http=require('http'),fs=require('fs'),os=require(
 const automation=require('./automation');
 const credentials=require('./credentials');
 const {chooseModel}=require('./model-selection');
-const {SessionSyncClient}=require('./core/session-client');
-const sessionSync=new SessionSyncClient({tokenPath:path.join(ROOT,'.ultron-device.json')});
 const D=__dirname,ROOT=process.env.ULTRON_HOME||(process.pkg?path.dirname(process.execPath):__dirname),W=process.platform==='win32';
 for(const[src,dst]of[['.env.example','.env'],['apps.json','apps.json']]){try{if(!fs.existsSync(path.join(ROOT,dst)))fs.writeFileSync(path.join(ROOT,dst),fs.readFileSync(path.join(D,src)))}catch{}}
 try{fs.readFileSync(path.join(ROOT,'.env'),'utf8').split(/\r?\n/).forEach(l=>{const m=l.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^["']|["']$/g,'')})}catch{}
+const {SessionSyncClient}=require('./core/session-client');
+const sessionSync=new SessionSyncClient({tokenPath:path.join(ROOT,'.ultron-device.json')});
 const E=process.env,KEY=E.ANTHROPIC_API_KEY,GKEY=E.GEMINI_API_KEY,EKEY=E.ELEVENLABS_API_KEY,FKEY=E.FISH_API_KEY,PORT=+E.PORT||4777;
 const MODEL=E.ULTRON_MODEL||'claude-sonnet-5-5',GMODEL=E.GEMINI_MODEL||'gemini-flash-latest',EMODEL=E.ELEVENLABS_MODEL||'eleven_flash_v2_5',FMODEL=E.FISH_MODEL||'s2-pro';
 let FVOICE=E.FISH_VOICE_ID||'',EVOICE=E.ELEVENLABS_VOICE_ID||'';
