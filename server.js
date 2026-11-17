@@ -6,6 +6,8 @@ const {chooseModel}=require('./model-selection');
 const D=__dirname,ROOT=process.env.ULTRON_HOME||(process.pkg?path.dirname(process.execPath):__dirname),W=process.platform==='win32';
 for(const[src,dst]of[['.env.example','.env'],['apps.json','apps.json']]){try{if(!fs.existsSync(path.join(ROOT,dst)))fs.writeFileSync(path.join(ROOT,dst),fs.readFileSync(path.join(D,src)))}catch{}}
 try{fs.readFileSync(path.join(ROOT,'.env'),'utf8').split(/\r?\n/).forEach(l=>{const m=l.match(/^\s*([A-Z_]+)\s*=\s*(.*?)\s*$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^["']|["']$/g,'')})}catch{}
+const {SessionSyncClient}=require('./core/session-client');
+const sessionSync=new SessionSyncClient({tokenPath:path.join(ROOT,'.ultron-device.json')});
 const E=process.env,KEY=E.ANTHROPIC_API_KEY,GKEY=E.GEMINI_API_KEY,EKEY=E.ELEVENLABS_API_KEY,FKEY=E.FISH_API_KEY,PORT=+E.PORT||4777;
 const MODEL=E.ULTRON_MODEL||'claude-sonnet-5-5',GMODEL=E.GEMINI_MODEL||'gemini-flash-latest',EMODEL=E.ELEVENLABS_MODEL||'eleven_flash_v2_5',FMODEL=E.FISH_MODEL||'s2-pro';
 let FVOICE=E.FISH_VOICE_ID||'',EVOICE=E.ELEVENLABS_VOICE_ID||'';
@@ -224,6 +226,9 @@ http.createServer(async(req,res)=>{
   if(u.pathname.startsWith('/api/')){
    if(req.method==='POST'&&req.headers['x-ultron']!=='1')return send(res,403,{error:'forbidden'});
    let body={};if(req.method==='POST'){let s='';for await(const c of req){s+=c;if(s.length>9e6)throw new Error('Request too large')}body=JSON.parse(s||'{}')}
+   if(u.pathname==='/api/session/status'){return send(res,200,sessionSync.status())}
+   if(u.pathname==='/api/session/pair'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await sessionSync.pair(body.code))}
+   if(u.pathname==='/api/session/event'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,201,await sessionSync.append(body.event_type||'system.status','desktop',body.payload||{}))}
    if(u.pathname==='/api/automation/windows'){if(req.method!=='GET')return send(res,405,{error:'GET only'});return send(res,200,{windows:await automation.windows(),stopped:automation.isStopped()})}
    if(u.pathname==='/api/automation/controls'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,{controls:await automation.controls(body.title)})}
    if(u.pathname==='/api/automation/action'){if(req.method!=='POST')return send(res,405,{error:'POST only'});return send(res,200,await automation.execute(body.action))}
@@ -269,7 +274,7 @@ http.createServer(async(req,res)=>{
    if(u.pathname==='/api/stt')return send(res,200,{text:await stt(body.wav)});
    if(u.pathname==='/api/restart'){if(req.method!=='POST')return send(res,405,{error:'POST only'});if(!process.listenerCount('ultron-restart'))return send(res,200,{ok:false,manual:true});send(res,200,{ok:true});setTimeout(()=>process.emit('ultron-restart'),400);return}
    if(u.pathname==='/api/tts'){const a=await tts(body.text);res.writeHead(200,{'content-type':'audio/mpeg'});return res.end(a)}
-   if(u.pathname==='/api/chat'){const m=(body.messages||[]).slice(-12).map(x=>({role:x.role==='assistant'?'assistant':'user',content:String(x.content).slice(0,8000)}));const text=await chat(m);saveHist(m,text);return send(res,200,{text,brain})}
+   if(u.pathname==='/api/chat'){const m=(body.messages||[]).slice(-12).map(x=>({role:x.role==='assistant'?'assistant':'user',content:String(x.content).slice(0,8000)}));const text=await chat(m);saveHist(m,text);if(sessionSync.paired){const latestUser=[...m].reverse().find(item=>item.role==='user');if(latestUser)await sessionSync.append('message.user','desktop',{text:latestUser.content}).catch(e=>console.warn('Session sync:',e.message));await sessionSync.append('message.assistant','desktop',{text}).catch(e=>console.warn('Session sync:',e.message))}return send(res,200,{text,brain})}
   }
   send(res,404,{error:'not found'});
  }catch(e){send(res,500,{error:e.message})}

@@ -35,7 +35,9 @@
       "preload.js",
       "automation.js",
       "credentials.js",
-      "model-selection.js"
+      "model-selection.js",
+      "core/session-client.js",
+      "core/protocol.js"
     ],
     "win": {
       "target": [

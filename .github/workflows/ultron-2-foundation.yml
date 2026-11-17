@@ -1,0 +1,26 @@
+name: ULTRON 2.0 Foundation
+
+on:
+  push:
+    branches: [feature/ultron-2-foundation]
+  pull_request:
+    branches: [upgrade/1.3.3-advanced-desktop]
+
+permissions:
+  contents: read
+
+jobs:
+  protocol-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate server syntax and package metadata
+        run: |
+          node --check server.js
+          node --check core/session-client.js
+          node -e "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))"
+      - name: Run protocol and session client tests
+        run: node --test test/protocol.test.js test/session-client.test.js
